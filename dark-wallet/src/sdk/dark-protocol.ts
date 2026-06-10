@@ -88,9 +88,9 @@ export class DarkProtocolClient {
       throw new Error('Wallet not connected');
     }
 
-    // Validate shielded address format (starts with zs1)
-    if (!recipientAddress.startsWith('zs1')) {
-      throw new Error('Invalid shielded address. Must start with zs1');
+    // Validate shielded address format during the Zcash -> ZOLana migration.
+    if (!recipientAddress.startsWith('zs1') && !recipientAddress.startsWith('zsol1')) {
+      throw new Error('Invalid shielded address. Must start with zs1 or zsol1');
     }
 
     // TODO: Implement actual private transfer
@@ -165,8 +165,9 @@ export function createDarkProtocolClient(
  * Helper to validate shielded address
  */
 export function isValidShieldedAddress(address: string): boolean {
-  // Zcash Sapling addresses start with zs1 and are 43 bytes (78 chars in bech32)
-  return address.startsWith('zs1') && address.length >= 78;
+  // Zcash Sapling addresses start with zs1; ZOLana shielded addresses use zsol1.
+  return (address.startsWith('zs1') && address.length >= 78) ||
+    (address.startsWith('zsol1') && address.length >= 50);
 }
 
 /**

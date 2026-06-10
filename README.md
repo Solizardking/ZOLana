@@ -27,6 +27,50 @@ SOLtoshi is the outward-facing operator persona. ZOLtoshi is the privacy-first c
 
 ---
 
+## Current Dark Wallet Port
+
+The active wallet work ports the Zcash paper-wallet model into the Solana
+runtime while keeping the original cold-storage discipline.
+
+What is now wired:
+
+1. `dark-wallet/src/components/wallet/PaperWallet.tsx` adds a Solana paper
+   wallet tab with local entropy, keypair generation, printable sheet output,
+   and JSON export.
+2. `dark-wallet/src/utils/runtime.ts` resolves SVM devnet/mainnet-beta RPC from
+   `HELIUS_RPC_URL`, `HELIUS_API_KEY`, `SOLANA_RPC_URL`, and `SOLANA_CLUSTER`.
+3. `dark-wallet/src/utils/dark-clawd-agent.ts` adds the `XAI_API_KEY` backed
+   Dark Clawd sidecar for reviewing public cold-storage metadata and payment
+   posture.
+4. `dark-wallet/src/sdk/private-payment.ts` adds durable private payment
+   staging for `x402`, `AP2`, and `M2M`, with explicit Solana/EVM settlement
+   and an EVM proof-layer option.
+
+How the November Zcash-to-Solana port works:
+
+1. The original `paper/` generator remains the Zcash/Sapling reference for
+   offline entropy, printable cold storage, and air-gapped key handling.
+2. Dark Wallet keeps that workflow but outputs Solana keypairs for SVM use.
+3. Shielding and private transfers stay exposed in the wallet as staged
+   privacy operations while Dark Protocol program IDs and live proof plumbing
+   are finalized.
+4. Helius supplies practical RPC access for devnet and mainnet-beta, while the
+   paper-wallet generation path remains fully local and does not require RPC.
+
+Relevant env:
+
+```bash
+HELIUS_RPC_URL=
+HELIUS_API_KEY=
+SOLANA_RPC_URL=
+SOLANA_CLUSTER=devnet        # or mainnet-beta
+XAI_API_KEY=
+XAI_BASE_URL=
+XAI_MODEL=
+```
+
+---
+
 ## Repository Atlas
 
 | Directory | Purpose |
@@ -79,10 +123,7 @@ The browser wallet and user-facing privacy cockpit.
 - Unshield tokens back to transparent balance
 - Private transfer between shielded addresses
 - Wallet connect flows for external wallets
-- Solana paper-wallet tab adapted from the Zcash `paper/` flow
-- Dark Clawd sidecar for xAI-backed public-metadata review
-- x402 / AP2 / M2M private-payment primitive staging
-- Modern UI for private balances, route previews, cold storage, and status
+- Modern UI for private balances, route previews, and status
 
 ### 4. DarkSwap (`darkswap/`)
 
@@ -247,51 +288,6 @@ The `paper/` tree is the offline custody lane.
 
 For a privacy-first system, cold storage is not optional. It is the backstop.
 
-### November Zcash-to-Solana port
-
-The original `paper/` project is a Zcash Sapling paper-wallet generator: it
-derives Sapling spending material, emits shielded addresses, and can save a PDF
-for offline storage. The ZOLana wallet ports that operating model onto Solana
-without copying the Zcash key format directly.
-
-What changed in the port:
-
-- Sapling spending keys become Solana `Keypair.fromSeed` keys.
-- The printable sheet carries Solana public key, secret key JSON, and local
-  fingerprints instead of Zcash Sapling private key material.
-- The wallet asks for optional typed entropy and mixes it with browser-local
-  randomness before deriving the seed.
-- The paper-wallet tab works without an injected browser wallet or RPC access.
-- Printing uses the browser print dialog, so `Save as PDF` remains available
-  without adding a heavy PDF dependency to the wallet app.
-
-What stayed conceptually the same:
-
-- Generate cold keys locally.
-- Keep private key material offline.
-- Fund the public address from an online wallet.
-- Reveal or import the secret only during recovery or controlled spend.
-
-### Dark Clawd paper-wallet sidecar
-
-The paper-wallet tab also includes a Dark Clawd sidecar. When `XAI_API_KEY` is
-present, the wallet can ask xAI to review public wallet metadata, operator
-instructions, and payment posture. Secret key JSON is not sent to the agent.
-
-### Private payment primitive
-
-The wallet now stages a typed private-payment receipt for:
-
-- `x402` - HTTP 402 style payment rail
-- `AP2` - agent-to-agent payment flow
-- `M2M` - machine-to-machine payment flow
-
-Each staged receipt records the rail, Solana or EVM settlement preference,
-durable non-ephemeral receipt intent, and Solana/EVM proof layer. This is not
-presented as final on-chain settlement yet; it is the wallet-side primitive
-needed to connect the private payment rail to the Dark Protocol program and
-external proof infrastructure.
-
 ---
 
 ## Clawd Agent Control Plane
@@ -455,23 +451,6 @@ cd dark-wallet && npm run build
 # Paper wallet
 cd paper/cli && cargo test
 ```
-
-### Dark Wallet environment
-
-The browser wallet reads these Vite-exposed values:
-
-```bash
-HELIUS_RPC_URL=           # full Helius RPC URL, highest priority
-HELIUS_API_KEY=           # builds devnet/mainnet-beta Helius RPC URL
-SOLANA_RPC_URL=           # generic Solana RPC fallback
-SOLANA_CLUSTER=devnet     # devnet or mainnet-beta
-XAI_API_KEY=              # enables the Dark Clawd paper-wallet sidecar
-XAI_BASE_URL=             # optional, defaults to https://api.x.ai/v1
-XAI_MODEL=                # optional xAI model override
-```
-
-Use `SOLANA_CLUSTER=mainnet-beta` for mainnet reads. Use `SOLANA_CLUSTER=devnet`
-for development and paper-wallet testing.
 
 ---
 

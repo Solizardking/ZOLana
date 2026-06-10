@@ -18,8 +18,8 @@ const PrivateTransfer: React.FC = () => {
       return;
     }
 
-    if (!recipientAddress.startsWith('zs1')) {
-      alert('Please enter a valid shielded address (starts with zs1)');
+    if (!recipientAddress.startsWith('zs1') && !recipientAddress.startsWith('zsol1')) {
+      alert('Please enter a valid shielded address (starts with zs1 or zsol1)');
       return;
     }
 
@@ -77,11 +77,11 @@ const PrivateTransfer: React.FC = () => {
             value={recipientAddress}
             onChange={(e) => setRecipientAddress(e.target.value)}
             className="input font-mono text-sm"
-            placeholder="zs1abc123def456..."
+            placeholder="zsol1abc123def456..."
             disabled={isLoading}
           />
           <p className="mt-1 text-xs text-gray-500">
-            Must be a 43-byte Sapling shielded address (starts with zs1)
+            Must be a Sapling-style shielded address (zs1) or ZOLana shielded address (zsol1)
           </p>
         </div>
 
