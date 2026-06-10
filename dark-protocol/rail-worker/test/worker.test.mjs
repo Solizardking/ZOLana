@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createWorkerState, processRailRequest, validateRailRequest } from '../src/worker.mjs';
+import { createWorkerState, processRailRequest, stableHex, validateRailRequest } from '../src/worker.mjs';
+
+function authorizationId(envelope) {
+  const { authorizationId, ...withoutId } = envelope;
+  return `rail_${envelope.rail}_${stableHex(JSON.stringify(withoutId), 16)}`;
+}
 
 function fixture(rail = 'x402') {
   const proofPayload = {
@@ -17,6 +22,7 @@ function fixture(rail = 'x402') {
     nonce: '0x0102030405060708090a0b0c0d0e0f10',
     createdAt: 1760000000000,
     status: 'anchored',
+    memoHash: '0x',
     solanaAnchor: {
       signature: '5SolanaSignature',
       cluster: 'devnet',
@@ -35,7 +41,7 @@ function fixture(rail = 'x402') {
     evmIntentProof: {
       domain: 'zolana.dark.evm-intent',
       version: '1',
-      digest: '0xdigest',
+      digest: '',
       eip712: {
         domain: {
           name: 'ZOLana Dark Private Payment',
@@ -43,20 +49,55 @@ function fixture(rail = 'x402') {
           chainId: 1,
           verifyingContract: '0x0000000000000000000000000000000000000402',
         },
+        primaryType: 'PrivatePaymentIntent',
+        types: {
+          PrivatePaymentIntent: [
+            { name: 'receiptId', type: 'string' },
+            { name: 'rail', type: 'string' },
+            { name: 'settlement', type: 'string' },
+            { name: 'proofLayer', type: 'string' },
+            { name: 'durableReceipt', type: 'bool' },
+            { name: 'recipient', type: 'string' },
+            { name: 'amountLamports', type: 'string' },
+            { name: 'commitmentHex', type: 'bytes32' },
+            { name: 'nonce', type: 'bytes16' },
+            { name: 'memoHash', type: 'bytes16' },
+            { name: 'solanaSignature', type: 'string' },
+            { name: 'solanaCluster', type: 'string' },
+            { name: 'createdAt', type: 'string' },
+          ],
+        },
+        message: {},
       },
     },
   };
+  proofPayload.evmIntentProof.eip712.message = {
+    receiptId: proofPayload.receiptId,
+    rail: proofPayload.rail,
+    settlement: proofPayload.settlement,
+    proofLayer: proofPayload.proofLayer,
+    durableReceipt: proofPayload.durableReceipt,
+    recipient: proofPayload.recipient,
+    amountLamports: proofPayload.amountLamports,
+    commitmentHex: proofPayload.commitmentHex,
+    nonce: proofPayload.nonce,
+    memoHash: proofPayload.memoHash,
+    solanaSignature: proofPayload.solanaAnchor.signature,
+    solanaCluster: proofPayload.solanaAnchor.cluster,
+    createdAt: String(proofPayload.createdAt),
+  };
+  proofPayload.evmIntentProof.digest = `0x${stableHex(JSON.stringify(proofPayload.evmIntentProof.eip712))}`;
 
   const base = {
     domain: 'zolana.dark.rail-authorization',
     version: '1',
-    authorizationId: `rail_${rail}_fixture`,
+    authorizationId: '',
     kind: rail === 'x402' ? 'x402-http-402' : rail === 'ap2' ? 'ap2-mandate' : 'm2m-session',
     rail,
     receiptId: proofPayload.receiptId,
     createdAt: 1760000001000,
     expiresAt: 1760000601000,
-    replayKey: '0xreplay',
+    replayKey: '',
     amountLamports: proofPayload.amountLamports,
     recipient: proofPayload.recipient,
     commitmentHex: proofPayload.commitmentHex,
@@ -68,6 +109,13 @@ function fixture(rail = 'x402') {
     evmChainId: 1,
     evmVerifyingContract: '0x0000000000000000000000000000000000000402',
   };
+  base.replayKey = `0x${stableHex([
+    proofPayload.receiptId,
+    proofPayload.nonce,
+    proofPayload.solanaAnchor.signature,
+    proofPayload.evmIntentProof.digest,
+    String(base.expiresAt),
+  ].join('|'))}`;
 
   if (rail === 'x402') {
     base.x402 = {
@@ -105,10 +153,16 @@ function fixture(rail = 'x402') {
       machinePayee: proofPayload.recipient,
       settlementWindowSeconds: 600,
       replayKey: base.replayKey,
-      bindingDigest: '0xbinding',
+      bindingDigest: `0x${stableHex([
+        proofPayload.receiptId,
+        proofPayload.amountLamports,
+        proofPayload.commitmentHex,
+        proofPayload.evmIntentProof.digest,
+      ].join('|'))}`,
     };
   }
 
+  base.authorizationId = authorizationId(base);
   return { proofPayload, railAuthorization: base };
 }
 
@@ -118,7 +172,7 @@ test('valid x402 rail authorization is accepted and consumes replay key', () => 
   assert.equal(first.ok, true);
   assert.equal(first.status, 202);
   assert.equal(first.mode, 'intent-only');
-  assert.equal(first.headers['PAYMENT-SIGNATURE'], 'rail_x402_fixture');
+  assert.match(first.headers['PAYMENT-SIGNATURE'], /^rail_x402_/);
 
   const replay = processRailRequest(fixture('x402'), state, { now: 1760000003000 });
   assert.equal(replay.ok, false);
@@ -139,3 +193,22 @@ test('expired rail authorization is rejected', () => {
   assert.match(result.errors.join('\n'), /expired/);
 });
 
+test('tampered evm proof digest is rejected', () => {
+  const request = fixture('ap2');
+  request.proofPayload.evmIntentProof.digest = '0xtampered';
+  const result = processRailRequest(request, createWorkerState(), { now: 1760000002000 });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 400);
+  assert.match(result.errors.join('\n'), /evmIntentProof\.digest/);
+});
+
+test('tampered replay key and m2m binding digest are rejected', () => {
+  const request = fixture('m2m');
+  request.railAuthorization.replayKey = '0xtampered';
+  request.railAuthorization.m2m.replayKey = '0xtampered';
+  request.railAuthorization.m2m.bindingDigest = '0xtampered';
+  const result = processRailRequest(request, createWorkerState(), { now: 1760000002000 });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 400);
+  assert.match(result.errors.join('\n'), /replayKey|binding digest/);
+});
