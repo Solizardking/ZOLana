@@ -52,3 +52,35 @@ body {
     @apply w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent text-white placeholder-gray-400;
   }
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    display: block;
+  }
+
+  header,
+  footer,
+  .paper-wallet-controls,
+  .paper-wallet-sidecar {
+    display: none !important;
+  }
+
+  .paper-wallet-print-root,
+  .paper-wallet-print-sheet,
+  .card {
+    background: #ffffff !important;
+    border-color: #000000 !important;
+    box-shadow: none !important;
+    color: #000000 !important;
+  }
+
+  .paper-wallet-print-sheet textarea,
+  .paper-wallet-print-sheet input {
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    border-color: #000000 !important;
+  }
+}

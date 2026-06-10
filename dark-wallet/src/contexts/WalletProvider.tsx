@@ -1,33 +1,35 @@
 import { FC, ReactNode, useMemo } from 'react';
-import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from '@solana/wallet-adapter-react';
+import {
+  ConnectionProvider,
+  WalletProvider as SolanaWalletProvider,
+} from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
-import { clusterApiUrl } from '@solana/web3.js';
+import { getDarkRuntimeConfig, resolveSolanaRpcUrl } from '../utils/runtime';
 
 interface WalletProviderProps {
   children: ReactNode;
 }
 
 const WalletProvider: FC<WalletProviderProps> = ({ children }) => {
-  // You can use 'devnet', 'testnet', or 'mainnet-beta'
-  const network = 'devnet';
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const runtime = useMemo(() => getDarkRuntimeConfig(), []);
+  const endpoint = useMemo(
+    () => resolveSolanaRpcUrl(runtime.defaultNetwork, runtime),
+    [runtime],
+  );
 
-  // Configure supported wallets
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
     ],
-    []
+    [],
   );
 
   return (
     <ConnectionProvider endpoint={endpoint}>
       <SolanaWalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
-          {children}
-        </WalletModalProvider>
+        <WalletModalProvider>{children}</WalletModalProvider>
       </SolanaWalletProvider>
     </ConnectionProvider>
   );
