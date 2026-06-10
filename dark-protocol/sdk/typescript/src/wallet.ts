@@ -2,7 +2,7 @@ import { Keypair, PublicKey } from '@solana/web3.js';
 import { DarkProtocolClient } from './client';
 import type { ShieldedAddress, Note, WalletState } from './types';
 import * as bip39 from 'bip39';
-import derivePath from 'bip32';
+import { sha256 } from '@noble/hashes/sha2.js';
 
 export class DarkWallet {
   private client: DarkProtocolClient;
@@ -25,7 +25,7 @@ export class DarkWallet {
   ): Promise<DarkWallet> {
     const seed = await bip39.mnemonicToSeed(mnemonic);
     const path = `m/44'/501'/${accountIndex}'/0'`;
-    const derivedSeed = derivePath(path, seed.toString('hex')).key;
+    const derivedSeed = sha256(Buffer.concat([seed, Buffer.from(path)]));
     const keypair = Keypair.fromSeed(derivedSeed);
 
     return new DarkWallet(client, keypair);

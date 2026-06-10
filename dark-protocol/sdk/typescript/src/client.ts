@@ -1,9 +1,7 @@
 import { Connection, PublicKey, Transaction, Keypair } from '@solana/web3.js';
-import { AnchorProvider, Program, Idl } from '@coral-xyz/anchor';
+import { AnchorProvider, Idl } from '@coral-xyz/anchor';
 import { createHelius } from 'helius-sdk';
 import { createDarkProtocolConfigFromEnv, resolveHeliusRpcUrl, type DarkProtocolCluster } from './config';
-
-type DarkProtocol = any;
 
 export interface DarkProtocolConfig {
   heliusApiKey?: string;
@@ -20,13 +18,13 @@ export interface DarkProtocolConfig {
 
 export class DarkProtocolClient {
   public readonly connection: Connection;
-  public readonly program: Program<DarkProtocol>;
+  public readonly program: any;
   public readonly helius: ReturnType<typeof createHelius>;
   public readonly config: DarkProtocolConfig;
   
   private constructor(
     connection: Connection,
-    program: Program<DarkProtocol>,
+    program: any,
     helius: ReturnType<typeof createHelius>,
     config: DarkProtocolConfig
   ) {
@@ -60,7 +58,8 @@ export class DarkProtocolClient {
     
     // Load IDL (in production, fetch from chain or bundle)
     const idl = await DarkProtocolClient.loadIdl();
-    const program = new (Program as any)(idl, programId, provider) as Program<DarkProtocol>;
+    const { Program } = await import('@coral-xyz/anchor');
+    const program = new (Program as any)(idl, programId, provider);
     
     return new DarkProtocolClient(connection, program, helius, config);
   }
