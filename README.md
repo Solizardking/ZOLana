@@ -1,157 +1,445 @@
 # ZOLana
 
-**Privacy-First Solana Ecosystem with Zcash Zero-Knowledge Technology + AI Agents**
+**Privacy-first, agentic Solana platform for autonomous DeFi, shielded wallets, and offline cold storage**
 
-ZOLana combines the battle-tested privacy infrastructure of Zcash (zk-SNARKs, shielded transactions) with Solana's high-speed execution and the Solana DeFi ecosystem (Jupiter, Helius) to create a complete privacy-preserving blockchain platform enhanced with AI agents in TEE environments.
+ZOLana is the combined system: Dark Protocol, Dark Wallet, DarkSwap, paper-wallet tooling, and the broader Zcash-inspired privacy stack, all organized around Clawd agents that can monitor, route, and operate the chain with policy-driven autonomy.
+
+It is inspired by Gorbaganan and shaped around a simple idea: private money should be fast, programmable, and usable by agents without giving up user custody.
+
+SOLtoshi is the outward-facing operator persona. ZOLtoshi is the privacy-first chain persona. Same system, different face.
 
 ---
 
-## Project Structure
+## Executive Summary
+
+> ZOLana combines Zcash-style zero-knowledge privacy, Solana-speed execution, Jupiter routing, Helius infrastructure, offline paper-wallet generation, and AI agents in trusted execution environments into one unified privacy-first blockchain platform.
+
+| What | How |
+|------|-----|
+| Privacy | Zcash Sapling and Orchard-inspired shielded flows, encrypted memos, notes, commitments, and nullifiers |
+| Speed | Solana execution with fast confirmation targets, low fees, and high-throughput routing |
+| Swaps | Jupiter aggregation for best-route private swaps and liquidity discovery |
+| Infrastructure | Helius RPC, webhooks, and data APIs for transaction and asset operations |
+| AI Agents | TEE-secured Clawd agents for policy, automation, monitoring, and routing |
+| Wallets | Dark Wallet plus external wallet integrations like Backpack, Phantom, and Solflare |
+| Cold Storage | Offline paper-wallet generation for air-gapped key creation and recovery |
+| Autonomy | A chain operator model where agents can manage health, policy, and transaction flows under user-defined rules |
+
+---
+
+## Repository Atlas
 
 | Directory | Purpose |
 |-----------|---------|
-| [`src/`](./src/README.md) | Zcash full-node daemon (zcashd) — C++ consensus, networking, wallet, RPC |
-| [`dark-protocol/`](./dark-protocol/README.md) | Solana Anchor programs for private transactions, ZK proofs, encrypted tokens |
-| [`dark-wallet/`](./dark-wallet/README.md) | Browser-based privacy wallet (Vite + React + Tailwind) |
-| [`darkswap/`](./darkswap/README.md) | Jupiter DEX integration examples (quote API, swap API, AMM core) |
-| [`backpack-master/`](./backpack-master/README.md) | Backpack wallet monorepo (Coral's Solana/cross-chain wallet) |
-| [`helius-sdk-main/`](./helius-sdk-main/README.md) | Helius Solana SDK (RPC, webhooks, DAS API) |
-| [`jupiter-amm-implementation-main/`](./jupiter-amm-implementation-main/README.md) | Jupiter AMM Rust SDK for Solana swaps |
-| [`paper/`](./paper/README.md) | Academic research paper on Dark Protocol |
-| [`depends/`](./depends/README.md) | Cross-compilation dependency builder for Zcash |
-| [`build-aux/`](./build-aux/README.md) | GNU Autotools build system support |
+| [`src/`](./src/README.md) | Zcash full-node daemon, consensus, networking, wallet, RPC, and the privacy core |
+| [`dark-protocol/`](./dark-protocol/README.md) | Solana privacy programs, ZK proofs, shield/unshield flows, private swaps, and AI-agent hooks |
+| [`dark-wallet/`](./dark-wallet/README.md) | Browser-based privacy wallet with shielded balances, private transfers, and swap UX |
+| [`darkswap/`](./darkswap/README.md) | Jupiter routing examples and swap execution references |
+| [`paper/`](./paper/README.md) | Offline paper-wallet generator and air-gapped cold-storage tooling |
+| [`backpack-master/`](./backpack-master/README.md) | Backpack wallet monorepo for Solana and cross-chain wallet references |
+| [`helius-sdk-main/`](./helius-sdk-main/README.md) | Helius RPC, webhooks, DAS, and transaction infrastructure |
+| [`jupiter-amm-implementation-main/`](./jupiter-amm-implementation-main/README.md) | Jupiter AMM and routing primitives for swap execution |
+| [`depends/`](./depends/README.md) | Cross-compilation dependency builder and build support |
+| [`build-aux/`](./build-aux/README.md) | GNU Autotools support files and build system glue |
 | [`contrib/`](./contrib/README.md) | Packaging, Docker, CI/CD, and deployment tooling |
-| [`doc/`](./doc/README.md) | Zcash documentation, developer notes, man pages |
-| [`qa/`](./qa/README.md) | Quality assurance: RPC tests, supply-chain vetting |
-| [`share/`](./share/README.md) | Build scripts and shared configuration |
-| [`zcutil/`](./zcutil/README.md) | Zcash utility scripts (build, fuzz, release) |
+| [`doc/`](./doc/README.md) | Documentation, release notes, and developer guidance |
+| [`qa/`](./qa/README.md) | Quality assurance, RPC tests, and validation tooling |
+| [`share/`](./share/README.md) | Shared build scripts and configuration helpers |
+| [`zcutil/`](./zcutil/README.md) | Utilities for build, fuzz, and release workflows |
 | [`test/`](./test/README.md) | Linting and test infrastructure |
 
 ---
 
-## Components
+## Core Components
 
 ### 1. Zcash Full Node (`src/`)
-The core blockchain daemon providing:
-- **Shielded transactions** with zk-SNARKs (Sapling + Orchard)
-- **Private wallet** with shielded addresses and viewing keys
-- **Consensus engine** with Equihash PoW
-- **RPC API** for programmatic interaction
+
+The base chain engine and privacy kernel.
+
+- Shielded transactions with zk-SNARK-based privacy primitives
+- Private wallet support with spending and viewing key separation
+- Consensus, networking, and RPC plumbing
+- The long-lived node layer that everything else hangs off
 
 ### 2. Dark Protocol (`dark-protocol/`)
-Solana Anchor framework for privacy-preserving programs:
-- **Encrypted tokens** with ZK-proof verification
-- **Private program state** using homomorphic encryption
-- **Shielded address generation**
-- **Commitment schemes** (Pedersen commitments)
-- **TypeScript SDK** with Helius + Jupiter integration
+
+The Solana privacy layer and transaction intelligence layer.
+
+- Shielded addresses, notes, commitments, and nullifiers
+- Private transfers, unshielding, and swap routing
+- Encrypted memos and privacy-preserving metadata
+- AI-agent hooks for TEE-secured automation
+- Helius and Jupiter integrations for practical execution
 
 ### 3. Dark Wallet (`dark-wallet/`)
-Browser-based privacy wallet:
-- Shielded address management
-- Private token transfers
-- Balance decryption with viewing keys
-- Jupiter swap integration for private trading
 
-### 4. DEX Integration (`darkswap/`)
-Jupiter DEX aggregation for private swaps:
-- Cross-DEX routing via Jupiter Quote API
-- Swap execution with optimal pricing
-- Integration examples in Rust and Node.js
+The browser wallet and user-facing privacy cockpit.
 
-### 5. Infrastructure (`helius-sdk-main/`)
-Helius SDK providing:
-- Smart transaction building
-- Optimized compute units and priority fees
-- Webhook management
-- DAS (Digital Asset Standard) API
+- Shield tokens into private balance
+- Unshield tokens back to transparent balance
+- Private transfer between shielded addresses
+- Wallet connect flows for external wallets
+- Modern UI for private balances, route previews, and status
+
+### 4. DarkSwap (`darkswap/`)
+
+The liquidity and routing layer.
+
+- Jupiter quote and swap examples
+- Route discovery across Solana liquidity sources
+- Reference implementations for swap execution
+- A practical place to plug private routing into the wallet and protocol layers
+
+### 5. Paper Wallet / Cold Storage (`paper/`)
+
+The offline key generation and air-gapped recovery surface.
+
+- Paper wallet generation for shielded addresses
+- PDF output for printable cold storage
+- Air-gapped operation for high-value key creation
+- Recovery and vanity address workflows
+
+### 6. Infrastructure (`helius-sdk-main/`)
+
+The network and delivery layer.
+
+- RPC endpoints and smart transaction support
+- Webhooks and asset data APIs
+- Priority fee and compute optimization
+- A safer way to connect the wallet and protocol to live chain data
+
+### 7. Clawd Agent Control Plane
+
+The operational layer that lets agents run the system with policy.
+
+- Chain health monitoring
+- Swap routing recommendations
+- Treasury and balance policy
+- Security checks and redaction
+- Validator and service coordination
+- Autonomous operation with explicit guardrails
+
+---
+
+## Repository Map
+
+```ascii
+┌─────────────────────────────────────────────────────────────────────┐
+│                              ZOLana                                 │
+├──────────────────────────────┬──────────────────────────────────────┤
+│  Privacy Kernel              │  Agentic Solana Layer                │
+│  ─ src/                      │  ─ dark-protocol/                    │
+│  ─ depends/                  │  ─ dark-wallet/                      │
+│  ─ build-aux/                │  ─ darkswap/                         │
+│  ─ zcutil/                   │  ─ paper/                            │
+├──────────────────────────────┴──────────────────────────────────────┤
+│  Infrastructure + Wallet Ecosystem                                  │
+│  ─ helius-sdk-main/  ─ backpack-master/  ─ jupiter-amm-implementation-main/ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Directory Deep Dive
+
+| Directory | Role | Notes |
+|-----------|------|-------|
+| `dark-protocol/` | Core privacy programs | 10+ documented instruction surfaces, private swap flows, AI hooks |
+| `src/` | Zcash node and consensus | Privacy kernel, wallet, and RPC foundation |
+| `dark-wallet/` | Browser privacy wallet | Vite, React, TypeScript, and modern wallet UX |
+| `darkswap/` | Swap routing layer | Jupiter quote and swap integration examples |
+| `paper/` | Cold storage tooling | Offline generation and printable keys |
+| `backpack-master/` | Wallet reference | Solana wallet monorepo and cross-chain wallet context |
+| `helius-sdk-main/` | Infra layer | RPC, webhooks, DAS, and smart transaction support |
+| `jupiter-amm-implementation-main/` | AMM primitives | Reference routing and liquidity logic |
+
+---
+
+## How It Fits Together
+
+1. Create cold keys offline with `paper/` if you want air-gapped recovery.
+2. Load the wallet in `dark-wallet/` and connect an external wallet when needed.
+3. Shield funds into the privacy pool via `dark-protocol/`.
+4. Use `darkswap/` and Jupiter routing to discover the best path.
+5. Let Clawd agents watch policy, risk, and chain health.
+6. Unshield or privately transfer only when the policy and user intent allow it.
+
+This is not just a set of directories. It is an operating model:
+
+- private by default
+- transparent when the user asks for it
+- agentic when the policy allows it
+- offline when custody matters
+- auditable at every boundary
+
+---
+
+## Dark Protocol Surface
+
+The protocol layer is the cryptographic and execution core of the platform.
+
+### Documented instruction surface
+
+| # | Instruction | Purpose |
+|---|------------|---------|
+| 1 | `initialize_protocol` | Set up protocol state and tree structure |
+| 2 | `create_shielded_address` | Derive a shielded address for private activity |
+| 3 | `shield_tokens` | Move transparent assets into the private pool |
+| 4 | `unshield_tokens` | Release shielded assets back to transparent balance |
+| 5 | `private_transfer` | Move value between shielded recipients |
+| 6 | `private_swap` | Route swaps through private liquidity paths |
+| 7 | `add_to_privacy_pool` | Deposit into privacy pool capacity |
+| 8 | `remove_from_privacy_pool` | Withdraw from the privacy pool |
+| 9 | `register_ai_agent` | Register a TEE-secured automation agent |
+| 10 | `execute_ai_action` | Execute an allowed agent action |
+
+### Cryptographic modules
+
+- Pedersen commitments
+- Merkle trees and commitment proofs
+- Nullifier-based double-spend prevention
+- Note encryption and encrypted memos
+- Sapling-style address and key derivation
+- Groth16-style proving system integration
+- Jupiter routing integration for swap flows
+
+---
+
+## Dark Wallet Surface
+
+The wallet is the part users actually touch, but it is also the policy mirror of the protocol.
+
+- Transparent balance and shielded balance views
+- Shield, unshield, and private transfer flows
+- Swap preview and route selection
+- Wallet adapter support for external wallets
+- Private memo support
+- Real-time status and ledger history
+- A clean visual layer that keeps the privacy system understandable
+
+The wallet should make privacy feel operational, not ceremonial.
+
+---
+
+## DarkSwap Surface
+
+DarkSwap is the route and liquidity intelligence layer.
+
+- Jupiter quote discovery
+- Best-route selection across Solana liquidity
+- Slippage-aware execution
+- Swap examples for Node, Rust, and wallet integration
+- Private routing patterns for the protocol layer
+
+This is where liquidity becomes policy.
+
+---
+
+## Paper Wallet / Cold Storage
+
+The `paper/` tree is the offline custody lane.
+
+- Generate keys without a live browser wallet
+- Print or export as PDF for physical storage
+- Keep high-value keys air-gapped
+- Use it as the fail-safe if hot wallets or agents are unavailable
+
+For a privacy-first system, cold storage is not optional. It is the backstop.
+
+---
+
+## Clawd Agent Control Plane
+
+Clawd agents are the automation layer that lets ZOLana behave like an operating system instead of a static app.
+
+### Agent roles
+
+- `guardian` - checks risk before value moves
+- `router` - evaluates swap paths and liquidity health
+- `treasurer` - watches reserves and policy thresholds
+- `sentinel` - tracks chain health and service uptime
+- `operator` - coordinates routine blockchain tasks
+- `recovery` - handles fallback and cold-storage workflows
+
+### Operating rules
+
+- Never hide risk, fees, or routing details
+- Ask before moving value unless the policy explicitly allows it
+- Prefer privacy by default
+- Fail closed when inputs are malformed or the route is uncertain
+- Keep offline recovery paths available
+- Make automation visible, not magical
+
+### Personas
+
+- SOLtoshi: chain operator, routing, and execution persona
+- ZOLtoshi: privacy guardian, recovery, and shielded-asset persona
 
 ---
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────┐
-│                   ZOLana Platform                    │
-├────────────┬─────────────┬────────────┬─────────────┤
-│  Zcash     │  Dark       │  Dark      │  Jupiter    │
-│  Full Node │  Protocol   │  Wallet    │  Aggregator │
-│  (src/)    │  (Solana)   │  (Web)     │  (darkswap) │
-│            │             │            │             │
-│  Privacy   │  Solana     │  Shielded  │  DEX Route  │
-│  Primitives│  Programs   │  UI        │  Optimization│
-└────────────┴─────────────┴────────────┴─────────────┘
-┌─────────────────────────────────────────────────────┐
-│              Infrastructure Layer                    │
-│  Helius SDK  │  Backpack Wallet  │  AI Agents (TEE) │
-└─────────────────────────────────────────────────────┘
+```ascii
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Clawd Agent Layer                           │
+│  Policy • Monitoring • Routing • Recovery • Treasury • Automation  │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│                        ZOLana Application Layer                    │
+│     dark-wallet  •  dark-protocol  •  darkswap  •  paper          │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│                   Privacy + Execution Foundation                    │
+│   Zcash-style notes • commitments • nullifiers • Solana speed       │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│                        Solana and Infra Layer                       │
+│  Helius RPC • Jupiter routing • wallets • validators • APIs         │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Getting Started
+## Performance and Target Specs
+
+These are the platform targets and reference values used across the docs.
+
+| Metric | Value |
+|--------|-------|
+| Private transaction throughput | ~1,500 TPS target |
+| AI agent response time | <1 second target |
+| Private swap latency | ~800 ms target |
+| Shielded balance representation | compact note-based state |
+| ZK proof size | compact Groth16-style proofs |
+| Note payload size | Sapling-style note payloads |
+| Transaction fee | sub-cent / low-fee target |
+| Confirmation speed | Solana-speed execution profile |
+
+---
+
+## Roadmap
+
+```ascii
+PHASE 1: FOUNDATION
+├── Zcash-style privacy kernel
+├── Dark Wallet UI
+├── Dark Protocol program surface
+├── Jupiter routing integration
+├── Offline paper-wallet tooling
+└── Clawd agent policy layer
+
+PHASE 2: ADVANCED PRIVACY
+├── Stronger proof workflows
+├── Privacy pools
+├── Better nullifier handling
+├── Stronger memo encryption
+└── Deeper auditability
+
+PHASE 3: AUTONOMOUS OPERATIONS
+├── Chain health sentinels
+├── Treasury policy agents
+├── Route-aware swap operators
+├── Recovery workflows
+└── Validator and service orchestration
+
+PHASE 4: EXPANSION
+├── Cross-chain bridges
+├── Mobile wallet surfaces
+├── Hardware wallet support
+├── Governance and policy tooling
+└── Broader private DeFi suite
+```
+
+---
+
+## Building the Beast
 
 ### Prerequisites
-- Rust toolchain (see `rust-toolchain.toml`)
-- Solana CLI + Anchor framework
-- Node.js 18+ (for wallet and SDK)
 
-### Quick Start
+- Rust toolchain
+- Solana CLI
+- Anchor
+- Node.js 18+
+- A wallet for browser-based testing
+
+### Quick start
 
 ```bash
-# Clone and explore
+# Clone the repo
 git clone https://github.com/Solizardking/ZOLana.git
 cd ZOLana
 
-# Zcash node build dependencies
-cd depends && make && cd ..
+# Build the core node/tooling
+make -j$(nproc) || true
 
-# Dark Protocol Solana programs
+# Build the Dark Protocol layer
 cd dark-protocol
 anchor build
-anchor test
 cd ..
 
-# Dark Wallet
+# Run the Dark Wallet
 cd dark-wallet
-npm install && npm run dev
+npm install
+npm run dev
+
+# Explore swap integrations
+cd ../darkswap
+# See the component README files for the exact subproject commands
+
+# Build the paper-wallet tooling
+cd ../paper/cli
+cargo build --release
 ```
 
-See each component's README for detailed setup instructions.
+### Development mode
+
+```bash
+# Core checks and builds
+make check || true
+
+# Protocol
+cd dark-protocol && anchor test
+
+# Wallet
+cd dark-wallet && npm run build
+
+# Paper wallet
+cd paper/cli && cargo test
+```
 
 ---
 
-## Key Technologies
+## Safety and Operating Principles
 
-| Technology | Role |
-|-----------|------|
-| **Zcash (Sapling + Orchard)** | Zero-knowledge proof system for shielded transactions |
-| **Solana** | High-performance L1 blockchain (400ms blocks, sub-cent fees) |
-| **Anchor** | Solana program framework for privacy primitives |
-| **Jupiter** | DEX aggregator for optimal swap routing |
-| **Helius** | RPC infrastructure and developer APIs |
-| **Backpack** | Solana wallet with xNFT support |
-| **AI Agents (TEE)** | Secure automated trading in Trusted Execution Environments |
+- Privacy is the default, not a premium feature
+- Recovery must work offline
+- Agent autonomy is bounded by policy
+- Swaps should show route and risk before execution
+- Cold storage stays cold
+- Public visibility is opt-in
+- The system should fail safely when in doubt
+
+---
+
+## Component Docs
+
+See the component READMEs for implementation-specific details:
+
+- [`dark-protocol/README.md`](./dark-protocol/README.md)
+- [`dark-wallet/README.md`](./dark-wallet/README.md)
+- [`darkswap/README.md`](./darkswap/README.md)
+- [`paper/README.md`](./paper/README.md)
+- [`ZOLANA_PROJECT_SUMMARY.md`](./ZOLANA_PROJECT_SUMMARY.md)
 
 ---
 
 ## License
 
-This project incorporates code from multiple open-source projects:
-- Zcash: MIT OR Apache-2.0
-- Dark Protocol: Apache 2.0
-- Backpack: Apache 2.0
-- Helius SDK: Apache 2.0
-- Jupiter AMM: Apache 2.0
-
-See individual component licenses for details.
+This repository combines multiple upstream open-source projects and their respective licenses. See the individual component licenses and source trees for details.
 
 ---
 
-## Contributing
+ZOLana is the privacy-first, agentic Solana stack.
+SOLtoshi runs it. ZOLtoshi protects it.
 
-Contributions are welcome! Please see each component's README for specific contribution guidelines.
-
----
-
-*ZOLana — Privacy is a right, not a privilege.*
