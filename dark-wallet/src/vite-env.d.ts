@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly XAI_API_KEY?: string;
   readonly XAI_BASE_URL?: string;
   readonly XAI_MODEL?: string;
+  readonly EVM_CHAIN_ID?: string;
+  readonly EVM_PRIVATE_PAYMENT_VERIFIER?: string;
   readonly VITE_HELIUS_API_KEY?: string;
   readonly VITE_HELIUS_RPC_URL?: string;
   readonly VITE_SOLANA_RPC_URL?: string;
@@ -15,4 +17,6 @@ interface ImportMetaEnv {
   readonly VITE_XAI_API_KEY?: string;
   readonly VITE_XAI_BASE_URL?: string;
   readonly VITE_XAI_MODEL?: string;
+  readonly VITE_EVM_CHAIN_ID?: string;
+  readonly VITE_EVM_PRIVATE_PAYMENT_VERIFIER?: string;
 }

@@ -2,6 +2,13 @@ import { Connection, PublicKey, Transaction, Keypair } from '@solana/web3.js';
 import { AnchorProvider, Idl } from '@coral-xyz/anchor';
 import { createHelius } from 'helius-sdk';
 import { createDarkProtocolConfigFromEnv, resolveHeliusRpcUrl, type DarkProtocolCluster } from './config';
+import type { PrivatePaymentReceipt } from './private-payment';
+import {
+  decodeDarkIntentMemo,
+  readDarkMemoInstructionText,
+  verifyPrivatePaymentIntentPayload,
+  type DarkIntentVerificationResult,
+} from './intent';
 
 export interface DarkProtocolConfig {
   heliusApiKey?: string;
@@ -159,5 +166,72 @@ export class DarkProtocolClient {
     } catch {
       return null;
     }
+  }
+
+  async verifyPrivatePaymentAnchor(receipt: PrivatePaymentReceipt): Promise<DarkIntentVerificationResult> {
+    const signature = receipt.solanaAnchor?.signature;
+    if (!signature) {
+      return {
+        ok: false,
+        mismatches: [],
+        signature: '',
+        reason: 'Receipt does not have a Solana anchor signature',
+      };
+    }
+
+    const verificationCommitment = this.config.commitment === 'finalized' ? 'finalized' : 'confirmed';
+    const transaction = await this.connection.getParsedTransaction(signature, {
+      commitment: verificationCommitment,
+      maxSupportedTransactionVersion: 0,
+    });
+
+    if (!transaction) {
+      return {
+        ok: false,
+        mismatches: [],
+        signature,
+        reason: 'Transaction was not found on the configured Solana RPC endpoint',
+      };
+    }
+
+    if (transaction.meta?.err) {
+      return {
+        ok: false,
+        mismatches: [],
+        signature,
+        slot: transaction.slot,
+        blockTime: transaction.blockTime,
+        reason: `Transaction failed: ${JSON.stringify(transaction.meta.err)}`,
+      };
+    }
+
+    for (const instruction of transaction.transaction.message.instructions) {
+      const memo = readDarkMemoInstructionText(instruction);
+      if (!memo) continue;
+
+      const payload = decodeDarkIntentMemo(memo);
+      if (!payload || payload.action !== 'private_payment') continue;
+
+      const expectedPayer = receipt.solanaAnchor?.payer;
+      const verification = verifyPrivatePaymentIntentPayload(payload, receipt, expectedPayer);
+      return {
+        ...verification,
+        signature,
+        slot: transaction.slot,
+        blockTime: transaction.blockTime,
+        payer: payload.payer,
+        payload,
+        reason: verification.ok ? undefined : 'Memo intent payload does not match receipt',
+      };
+    }
+
+    return {
+      ok: false,
+      mismatches: [],
+      signature,
+      slot: transaction.slot,
+      blockTime: transaction.blockTime,
+      reason: 'No matching ZOLana private-payment Memo intent found in transaction',
+    };
   }
 }

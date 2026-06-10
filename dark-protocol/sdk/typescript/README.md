@@ -121,12 +121,22 @@ const exportable = createPrivatePaymentProofPayload(anchored);
 console.log(anchored.commitmentHex, evmIntent.digest, exportable.status);
 ```
 
+To verify the Solana anchor later:
+
+```typescript
+const result = await client.verifyPrivatePaymentAnchor(anchored);
+if (!result.ok) {
+  throw new Error(result.mismatches.join('; ') || result.reason);
+}
+```
+
 This is the SDK-level receipt primitive for durable, non-ephemeral private
 payments over `x402`, `AP2`, and `M2M`. Solana anchoring records a signed Memo
-intent transaction against the same receipt. The EVM payload is an intent proof
-shape for later verifier or contract anchoring; it is not live EVM settlement by
-itself. The final Dark Protocol program IDL still needs settlement and proof
-verification wired on-chain.
+intent transaction against the same receipt. Verification fetches that
+transaction by signature and checks that the Memo payload matches the receipt.
+The EVM payload is an intent proof shape for later verifier or contract
+anchoring; it is not live EVM settlement by itself. The final Dark Protocol
+program IDL still needs settlement and proof verification wired on-chain.
 
 ## Private Swaps with ZK Proofs
 

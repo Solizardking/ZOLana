@@ -6,6 +6,7 @@
 import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { AnchorProvider } from '@coral-xyz/anchor';
 import { Buffer } from 'buffer';
+import bs58 from 'bs58';
 import type { PrivatePaymentReceipt } from './private-payment';
 
 // Dark Protocol Program ID on Devnet
@@ -30,6 +31,17 @@ export interface DarkIntentPayload {
   proofLayer?: 'solana' | 'evm';
   durableReceipt?: boolean;
   receiptId?: string;
+}
+
+export interface DarkIntentVerificationResult {
+  ok: boolean;
+  signature: string;
+  slot?: number;
+  blockTime?: number | null;
+  payer?: string;
+  payload?: DarkIntentPayload;
+  reason?: string;
+  mismatches?: string[];
 }
 
 // Simplified IDL type (we'll need to generate the full one from the program)
@@ -98,6 +110,82 @@ export class DarkProtocolClient {
 
   private createCommitment(action: DarkIntentAction, fields: string[]): string {
     return `0x${this.stableHex([action, ...fields, Date.now().toString()].join('|'))}`;
+  }
+
+  private parseDarkIntentPayload(raw: string): DarkIntentPayload | null {
+    try {
+      const parsed = JSON.parse(raw);
+      if (
+        parsed
+        && parsed.protocol === 'zolana.dark'
+        && parsed.version === 1
+        && typeof parsed.action === 'string'
+      ) {
+        return parsed as DarkIntentPayload;
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  }
+
+  private readMemoText(instruction: any): string | null {
+    const programId = instruction?.programId?.toBase58?.() ?? instruction?.programId?.toString?.();
+    if (programId !== MEMO_PROGRAM_ID.toBase58()) {
+      return null;
+    }
+
+    if (typeof instruction.parsed === 'string') {
+      return instruction.parsed;
+    }
+
+    if (typeof instruction.parsed?.memo === 'string') {
+      return instruction.parsed.memo;
+    }
+
+    if (typeof instruction.data === 'string') {
+      try {
+        return Buffer.from(bs58.decode(instruction.data)).toString('utf8');
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  private comparePrivatePaymentIntent(
+    payload: DarkIntentPayload,
+    receipt: PrivatePaymentReceipt,
+    expectedPayer?: string,
+  ): string[] {
+    const expectedMemoHash = this.memoHash(receipt.memo);
+    const checks: Array<[string, unknown, unknown]> = [
+      ['protocol', payload.protocol, 'zolana.dark'],
+      ['version', payload.version, 1],
+      ['action', payload.action, 'private_payment'],
+      ['receiptId', payload.receiptId, receipt.id],
+      ['recipient', payload.recipient, receipt.recipient],
+      ['amountLamports', payload.amountLamports, receipt.amountLamports],
+      ['commitment', payload.commitment, receipt.commitmentHex],
+      ['rail', payload.rail, receipt.rail],
+      ['settlement', payload.settlement, receipt.settlement],
+      ['proofLayer', payload.proofLayer, receipt.proofLayer],
+      ['durableReceipt', payload.durableReceipt, receipt.durableReceipt],
+    ];
+
+    if (expectedPayer) {
+      checks.push(['payer', payload.payer, expectedPayer]);
+    }
+
+    if (expectedMemoHash) {
+      checks.push(['memoHash', payload.memoHash, expectedMemoHash]);
+    }
+
+    return checks
+      .filter(([, actual, expected]) => actual !== expected)
+      .map(([field, actual, expected]) => `${field}: expected ${String(expected)}, got ${String(actual)}`);
   }
 
   buildIntentTransaction(payload: DarkIntentPayload): Transaction {
@@ -246,6 +334,74 @@ export class DarkProtocolClient {
       durableReceipt: receipt.durableReceipt,
       receiptId: receipt.id,
     });
+  }
+
+  async verifyPrivatePaymentAnchor(receipt: PrivatePaymentReceipt): Promise<DarkIntentVerificationResult> {
+    const signature = receipt.solanaAnchor?.signature;
+    if (!signature) {
+      return {
+        ok: false,
+        signature: '',
+        reason: 'Receipt does not have a Solana anchor signature',
+      };
+    }
+
+    const transaction = await this.connection.getParsedTransaction(signature, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    });
+
+    if (!transaction) {
+      return {
+        ok: false,
+        signature,
+        reason: 'Transaction was not found on the configured Solana RPC endpoint',
+      };
+    }
+
+    if (transaction.meta?.err) {
+      return {
+        ok: false,
+        signature,
+        slot: transaction.slot,
+        blockTime: transaction.blockTime,
+        reason: `Transaction failed: ${JSON.stringify(transaction.meta.err)}`,
+      };
+    }
+
+    const instructions = transaction.transaction.message.instructions;
+    for (const instruction of instructions) {
+      const memo = this.readMemoText(instruction);
+      if (!memo) {
+        continue;
+      }
+
+      const payload = this.parseDarkIntentPayload(memo);
+      if (!payload || payload.action !== 'private_payment') {
+        continue;
+      }
+
+      const expectedPayer = receipt.solanaAnchor?.payer ?? this.wallet.publicKey?.toBase58?.();
+      const mismatches = this.comparePrivatePaymentIntent(payload, receipt, expectedPayer);
+      return {
+        ok: mismatches.length === 0,
+        signature,
+        slot: transaction.slot,
+        blockTime: transaction.blockTime,
+        payer: payload.payer,
+        payload,
+        mismatches,
+        reason: mismatches.length > 0 ? 'Memo intent payload does not match receipt' : undefined,
+      };
+    }
+
+    return {
+      ok: false,
+      signature,
+      slot: transaction.slot,
+      blockTime: transaction.blockTime,
+      reason: 'No matching ZOLana private-payment Memo intent found in transaction',
+    };
   }
 
   /**

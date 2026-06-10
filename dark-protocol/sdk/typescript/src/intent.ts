@@ -1,5 +1,6 @@
 import { PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { Buffer } from 'buffer';
+import bs58 from 'bs58';
 import type { PrivatePaymentReceipt } from './private-payment';
 
 export const DARK_MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
@@ -27,6 +28,20 @@ export interface DarkIntentPayload {
 export interface BuildDarkIntentParams {
   payer: PublicKey;
   payload: DarkIntentPayload;
+}
+
+export interface DarkIntentPayloadVerification {
+  ok: boolean;
+  mismatches: string[];
+}
+
+export interface DarkIntentVerificationResult extends DarkIntentPayloadVerification {
+  signature: string;
+  slot?: number;
+  blockTime?: number | null;
+  payer?: string;
+  payload?: DarkIntentPayload;
+  reason?: string;
 }
 
 function stableHex(input: string, bytes = 32): string {
@@ -59,6 +74,94 @@ export function createDarkIntentCommitment(action: DarkIntentAction, fields: str
 export function createDarkMemoHash(memo?: string): string | undefined {
   const trimmed = memo?.trim();
   return trimmed ? `0x${stableHex(trimmed, 16)}` : undefined;
+}
+
+export function decodeDarkIntentMemo(raw: string): DarkIntentPayload | null {
+  try {
+    const parsed = JSON.parse(raw);
+    if (
+      parsed
+      && parsed.protocol === 'zolana.dark'
+      && parsed.version === 1
+      && typeof parsed.action === 'string'
+    ) {
+      return parsed as DarkIntentPayload;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+export function readDarkMemoInstructionText(instruction: any): string | null {
+  const programId = instruction?.programId?.toBase58?.() ?? instruction?.programId?.toString?.();
+  if (programId !== DARK_MEMO_PROGRAM_ID.toBase58()) {
+    return null;
+  }
+
+  if (typeof instruction.parsed === 'string') {
+    return instruction.parsed;
+  }
+
+  if (typeof instruction.parsed?.memo === 'string') {
+    return instruction.parsed.memo;
+  }
+
+  if (typeof instruction.data === 'string') {
+    try {
+      return Buffer.from(bs58.decode(instruction.data)).toString('utf8');
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+export function comparePrivatePaymentIntentPayload(
+  payload: DarkIntentPayload,
+  receipt: PrivatePaymentReceipt,
+  expectedPayer?: string,
+): string[] {
+  const expectedMemoHash = createDarkMemoHash(receipt.memo);
+  const checks: Array<[string, unknown, unknown]> = [
+    ['protocol', payload.protocol, 'zolana.dark'],
+    ['version', payload.version, 1],
+    ['action', payload.action, 'private_payment'],
+    ['receiptId', payload.receiptId, receipt.id],
+    ['recipient', payload.recipient, receipt.recipient],
+    ['amountLamports', payload.amountLamports, receipt.amountLamports.toString()],
+    ['commitment', payload.commitment, receipt.commitmentHex],
+    ['rail', payload.rail, receipt.rail],
+    ['settlement', payload.settlement, receipt.settlement],
+    ['proofLayer', payload.proofLayer, receipt.proofLayer],
+    ['durableReceipt', payload.durableReceipt, receipt.durableReceipt],
+  ];
+
+  if (expectedPayer) {
+    checks.push(['payer', payload.payer, expectedPayer]);
+  }
+
+  if (expectedMemoHash) {
+    checks.push(['memoHash', payload.memoHash, expectedMemoHash]);
+  }
+
+  return checks
+    .filter(([, actual, expected]) => actual !== expected)
+    .map(([field, actual, expected]) => `${field}: expected ${String(expected)}, got ${String(actual)}`);
+}
+
+export function verifyPrivatePaymentIntentPayload(
+  payload: DarkIntentPayload,
+  receipt: PrivatePaymentReceipt,
+  expectedPayer?: string,
+): DarkIntentPayloadVerification {
+  const mismatches = comparePrivatePaymentIntentPayload(payload, receipt, expectedPayer);
+  return {
+    ok: mismatches.length === 0,
+    mismatches,
+  };
 }
 
 export function solToLamportsString(amountSol: number): string {

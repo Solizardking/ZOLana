@@ -7,6 +7,8 @@ export interface DarkRuntimeConfig {
   xaiApiKey?: string;
   xaiBaseUrl: string;
   xaiModel: string;
+  evmChainId: number;
+  evmPrivatePaymentVerifier?: string;
   defaultNetwork: DarkNetwork;
 }
 
@@ -30,6 +32,10 @@ export function getDarkRuntimeConfig(): DarkRuntimeConfig {
   const xaiApiKey = readEnv("XAI_API_KEY") || readEnv("VITE_XAI_API_KEY");
   const xaiBaseUrl = readEnv("XAI_BASE_URL") || readEnv("VITE_XAI_BASE_URL") || "https://api.x.ai/v1";
   const xaiModel = readEnv("XAI_MODEL") || readEnv("VITE_XAI_MODEL") || "grok-4.20-beta-latest-non-reasoning";
+  const evmChainIdValue = readEnv("EVM_CHAIN_ID") || readEnv("VITE_EVM_CHAIN_ID") || "1";
+  const evmChainId = Number.parseInt(evmChainIdValue, 10);
+  const evmPrivatePaymentVerifier =
+    readEnv("EVM_PRIVATE_PAYMENT_VERIFIER") || readEnv("VITE_EVM_PRIVATE_PAYMENT_VERIFIER");
 
   const defaultNetwork = normalizeNetwork(
     readEnv("SOLANA_CLUSTER") ||
@@ -44,6 +50,8 @@ export function getDarkRuntimeConfig(): DarkRuntimeConfig {
     xaiApiKey: xaiApiKey || undefined,
     xaiBaseUrl,
     xaiModel,
+    evmChainId: Number.isFinite(evmChainId) ? evmChainId : 1,
+    evmPrivatePaymentVerifier: evmPrivatePaymentVerifier || undefined,
     defaultNetwork,
   };
 }

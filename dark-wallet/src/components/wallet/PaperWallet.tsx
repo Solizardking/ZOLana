@@ -18,6 +18,8 @@ import {
   loadPrivatePaymentReceipts,
   markPrivatePaymentAnchored,
   markPrivatePaymentFailed,
+  markPrivatePaymentVerificationFailed,
+  markPrivatePaymentVerified,
   serializePrivatePaymentProofPayload,
   stagePrivatePayment,
   updatePrivatePaymentReceipt,
@@ -72,6 +74,7 @@ const PaperWallet: React.FC = () => {
   const [lastPayment, setLastPayment] = useState<PrivatePaymentReceipt | null>(null);
   const [paymentReceipts, setPaymentReceipts] = useState<PrivatePaymentReceipt[]>(() => loadPrivatePaymentReceipts());
   const [anchoringReceiptId, setAnchoringReceiptId] = useState<string | null>(null);
+  const [verifyingReceiptId, setVerifyingReceiptId] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     setIsBusy(true);
@@ -163,12 +166,15 @@ const PaperWallet: React.FC = () => {
   };
 
   const handleExportPaymentProof = (receipt: PrivatePaymentReceipt) => {
-    const payload = createPrivatePaymentProofPayload(receipt);
+    const payload = createPrivatePaymentProofPayload(receipt, {
+      evmChainId: runtime.evmChainId,
+      evmVerifyingContract: runtime.evmPrivatePaymentVerifier,
+    });
     downloadFile(
       `zolana-private-payment-proof-${receipt.id}.json`,
       serializePrivatePaymentProofPayload(payload),
     );
-    setStatus(`Exported EVM proof payload for ${receipt.id}`);
+    setStatus(`Exported EVM proof payload for ${receipt.id} on chain ${runtime.evmChainId}`);
   };
 
   const handleAnchorPaymentReceipt = async (receipt: PrivatePaymentReceipt) => {
@@ -185,6 +191,7 @@ const PaperWallet: React.FC = () => {
       const anchoredReceipt = markPrivatePaymentAnchored(receipt, {
         signature,
         cluster: runtime.defaultNetwork,
+        payer: publicKey.toBase58(),
         commitment: 'confirmed',
       });
       const receipts = updatePrivatePaymentReceipt(anchoredReceipt);
@@ -199,6 +206,51 @@ const PaperWallet: React.FC = () => {
       setStatus(`Payment anchor error: ${error.message}`);
     } finally {
       setAnchoringReceiptId(null);
+    }
+  };
+
+  const handleVerifyPaymentReceipt = async (receipt: PrivatePaymentReceipt) => {
+    if (!receipt.solanaAnchor?.signature) {
+      setStatus('Anchor the private-payment receipt before verifying it');
+      return;
+    }
+
+    setVerifyingReceiptId(receipt.id);
+    setStatus(`Verifying ${receipt.id} against Solana Memo payload...`);
+    try {
+      const darkClient = createDarkProtocolClient(connection, wallet);
+      const result = await darkClient.verifyPrivatePaymentAnchor(receipt);
+      if (!result.ok) {
+        const reason = result.mismatches?.length
+          ? result.mismatches.join('; ')
+          : result.reason ?? 'Unknown verification failure';
+        const failedReceipt = markPrivatePaymentVerificationFailed(receipt, reason);
+        const receipts = updatePrivatePaymentReceipt(failedReceipt);
+        setPaymentReceipts(receipts);
+        setLastPayment((current) => current?.id === receipt.id ? failedReceipt : current);
+        setStatus(`Verification failed for ${receipt.id}: ${reason}`);
+        return;
+      }
+
+      const verifiedReceipt = markPrivatePaymentVerified(receipt, {
+        signature: result.signature,
+        slot: result.slot ?? 0,
+        blockTime: result.blockTime,
+        payer: result.payer ?? receipt.solanaAnchor.payer ?? '',
+        memoMatched: true,
+      });
+      const receipts = updatePrivatePaymentReceipt(verifiedReceipt);
+      setPaymentReceipts(receipts);
+      setLastPayment((current) => current?.id === receipt.id ? verifiedReceipt : current);
+      setStatus(`Verified ${receipt.id} on Solana slot ${result.slot}`);
+    } catch (error: any) {
+      const failedReceipt = markPrivatePaymentVerificationFailed(receipt, error.message);
+      const receipts = updatePrivatePaymentReceipt(failedReceipt);
+      setPaymentReceipts(receipts);
+      setLastPayment((current) => current?.id === receipt.id ? failedReceipt : current);
+      setStatus(`Verification error: ${error.message}`);
+    } finally {
+      setVerifyingReceiptId(null);
     }
   };
 
@@ -338,7 +390,11 @@ const PaperWallet: React.FC = () => {
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
                 <p className="text-sm font-semibold text-gray-200">Local Receipt History</p>
-                <p className="text-xs text-gray-500">Kept in this browser only; export payloads for EVM proof anchoring or anchor the intent on Solana.</p>
+                <p className="text-xs text-gray-500">
+                  Kept in this browser only; export payloads for EVM chain {runtime.evmChainId}
+                  {runtime.evmPrivatePaymentVerifier ? ` verifier ${runtime.evmPrivatePaymentVerifier.slice(0, 10)}...` : ''}
+                  {' '}or anchor the intent on Solana.
+                </p>
               </div>
               <span className="text-xs text-cyan-300">{paymentReceipts.length} stored</span>
             </div>
@@ -376,6 +432,17 @@ const PaperWallet: React.FC = () => {
                             ? 'Anchoring...'
                             : 'Anchor on Solana'}
                       </button>
+                      <button
+                        className="btn-secondary text-xs"
+                        onClick={() => handleVerifyPaymentReceipt(receipt)}
+                        disabled={!receipt.solanaAnchor || verifyingReceiptId === receipt.id}
+                      >
+                        {receipt.solanaVerification
+                          ? 'Verified'
+                          : verifyingReceiptId === receipt.id
+                            ? 'Verifying...'
+                            : 'Verify Anchor'}
+                      </button>
                     </div>
                   </div>
                   <p className="mt-2 font-mono text-xs text-gray-400 break-all">{receipt.commitmentHex}</p>
@@ -388,6 +455,11 @@ const PaperWallet: React.FC = () => {
                     >
                       Solana anchor: {receipt.solanaAnchor.signature.slice(0, 20)}...
                     </a>
+                  )}
+                  {receipt.solanaVerification && (
+                    <p className="mt-2 text-xs text-emerald-300">
+                      Verified on slot {receipt.solanaVerification.slot} by {receipt.solanaVerification.payer.slice(0, 8)}...
+                    </p>
                   )}
                   {receipt.lastError && (
                     <p className="mt-2 text-xs text-red-300">{receipt.lastError}</p>

@@ -23,6 +23,7 @@ export interface PrivatePaymentReceipt extends PrivatePaymentRequest {
   commitmentHex: string;
   nonce: string;
   solanaAnchor?: PrivatePaymentSolanaAnchor;
+  solanaVerification?: PrivatePaymentSolanaVerification;
   lastError?: string;
 }
 
@@ -30,8 +31,18 @@ export interface PrivatePaymentSolanaAnchor {
   signature: string;
   cluster: 'devnet' | 'mainnet-beta';
   explorerUrl: string;
+  payer?: string;
   anchoredAt: number;
   commitment: 'processed' | 'confirmed' | 'finalized';
+}
+
+export interface PrivatePaymentSolanaVerification {
+  verifiedAt: number;
+  signature: string;
+  slot: number;
+  blockTime?: number | null;
+  payer: string;
+  memoMatched: boolean;
 }
 
 export interface PrivatePaymentEvmIntentProof {
@@ -82,8 +93,14 @@ export interface PrivatePaymentProofPayload {
   createdAt: number;
   status: PrivatePaymentStatus;
   solanaAnchor?: PrivatePaymentSolanaAnchor;
+  solanaVerification?: PrivatePaymentSolanaVerification;
   memoHash?: string;
   evmIntentProof: PrivatePaymentEvmIntentProof;
+}
+
+export interface PrivatePaymentProofOptions {
+  evmChainId?: number;
+  evmVerifyingContract?: string;
 }
 
 const PRIVATE_PAYMENT_STORAGE_KEY = 'zolana:dark-wallet:private-payments:v1';
@@ -246,6 +263,7 @@ export function markPrivatePaymentAnchored(
   params: {
     signature: string;
     cluster: 'devnet' | 'mainnet-beta';
+    payer?: string;
     commitment?: 'processed' | 'confirmed' | 'finalized';
     anchoredAt?: number;
   },
@@ -260,6 +278,7 @@ export function markPrivatePaymentAnchored(
       signature: params.signature,
       cluster: params.cluster,
       explorerUrl: createSolanaExplorerUrl(params.signature, params.cluster),
+      payer: params.payer,
       anchoredAt,
       commitment: params.commitment ?? 'confirmed',
     },
@@ -274,6 +293,36 @@ export function markPrivatePaymentFailed(
   return {
     ...receipt,
     status: 'failed',
+    updatedAt,
+    lastError: error,
+  };
+}
+
+export function markPrivatePaymentVerified(
+  receipt: PrivatePaymentReceipt,
+  verification: Omit<PrivatePaymentSolanaVerification, 'verifiedAt'> & { verifiedAt?: number },
+): PrivatePaymentReceipt {
+  const verifiedAt = verification.verifiedAt ?? Date.now();
+  return {
+    ...receipt,
+    status: 'anchored',
+    updatedAt: verifiedAt,
+    lastError: undefined,
+    solanaVerification: {
+      ...verification,
+      verifiedAt,
+    },
+  };
+}
+
+export function markPrivatePaymentVerificationFailed(
+  receipt: PrivatePaymentReceipt,
+  error: string,
+): PrivatePaymentReceipt {
+  const updatedAt = Date.now();
+  return {
+    ...receipt,
+    status: receipt.solanaAnchor ? 'anchored' : 'failed',
     updatedAt,
     lastError: error,
   };
@@ -337,7 +386,10 @@ export function createPrivatePaymentEvmIntentProof(
   };
 }
 
-export function createPrivatePaymentProofPayload(receipt: PrivatePaymentReceipt): PrivatePaymentProofPayload {
+export function createPrivatePaymentProofPayload(
+  receipt: PrivatePaymentReceipt,
+  options: PrivatePaymentProofOptions = {},
+): PrivatePaymentProofPayload {
   return {
     domain: 'zolana.dark.private-payment',
     version: '1',
@@ -353,8 +405,12 @@ export function createPrivatePaymentProofPayload(receipt: PrivatePaymentReceipt)
     createdAt: receipt.createdAt,
     status: receipt.status,
     solanaAnchor: receipt.solanaAnchor,
+    solanaVerification: receipt.solanaVerification,
     memoHash: receipt.memo ? `0x${stableHex(receipt.memo, 16)}` : undefined,
-    evmIntentProof: createPrivatePaymentEvmIntentProof(receipt),
+    evmIntentProof: createPrivatePaymentEvmIntentProof(receipt, {
+      chainId: options.evmChainId,
+      verifyingContract: options.evmVerifyingContract,
+    }),
   };
 }
 

@@ -60,9 +60,11 @@ How the last-November Zcash-to-Solana port works:
    paper-wallet generation path remains fully local and does not require RPC.
 5. Private-payment receipts are currently wallet-side durable records. They can
    be anchored as Solana Memo intent transactions, then store the resulting
-   signature, cluster, explorer URL, and status on the same receipt. The EVM
-   proof export is an intent payload for later verifier or contract anchoring,
-   not yet a deployed on-chain verifier or final privacy settlement.
+   signature, cluster, explorer URL, and status on the same receipt. The wallet
+   can re-fetch that transaction and verify the Memo payload still matches the
+   receipt fields before exporting EVM proof intent. The EVM proof export is an
+   intent payload for later verifier or contract anchoring, not yet a deployed
+   on-chain verifier or final privacy settlement.
 
 Relevant env:
 
