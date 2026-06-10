@@ -1,8 +1,9 @@
 import http from 'node:http';
-import { createWorkerState, processRailRequest, responseBody } from './worker.mjs';
+import { createSettlementConfig, createWorkerState, processRailRequest, responseBody } from './worker.mjs';
 
 const state = createWorkerState();
 const port = Number.parseInt(process.env.RAIL_WORKER_PORT ?? '4020', 10);
+const settlementConfig = createSettlementConfig(process.env);
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
@@ -35,7 +36,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     const body = await readJson(req);
-    const result = processRailRequest(body, state);
+    const result = await processRailRequest(body, state, { settlementConfig });
     res.writeHead(result.status, {
       'content-type': 'application/json',
       ...(result.headers ?? {}),
@@ -50,4 +51,3 @@ const server = http.createServer(async (req, res) => {
 server.listen(port, '127.0.0.1', () => {
   console.log(`ZOLana dark rail worker listening on http://127.0.0.1:${port}`);
 });
-
