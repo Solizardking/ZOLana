@@ -12,6 +12,10 @@ import {
 } from '../../utils/runtime';
 import { createDarkClawdAgent } from '../../utils/dark-clawd-agent';
 import {
+  appendPrivatePaymentReceipt,
+  createPrivatePaymentProofPayload,
+  loadPrivatePaymentReceipts,
+  serializePrivatePaymentProofPayload,
   stagePrivatePayment,
   type PrivatePaymentProofLayer,
   type PrivatePaymentRail,
@@ -60,6 +64,7 @@ const PaperWallet: React.FC = () => {
   const [paymentRecipient, setPaymentRecipient] = useState('');
   const [paymentMemo, setPaymentMemo] = useState('private settlement');
   const [lastPayment, setLastPayment] = useState<PrivatePaymentReceipt | null>(null);
+  const [paymentReceipts, setPaymentReceipts] = useState<PrivatePaymentReceipt[]>(() => loadPrivatePaymentReceipts());
 
   const handleGenerate = async () => {
     setIsBusy(true);
@@ -141,11 +146,22 @@ const PaperWallet: React.FC = () => {
         durableReceipt,
         memo: paymentMemo,
       });
+      const receipts = appendPrivatePaymentReceipt(receipt);
       setLastPayment(receipt);
-      setStatus(`Queued ${receipt.amountSol} SOL via ${receipt.rail.toUpperCase()} with ${receipt.proofLayer.toUpperCase()} proofing`);
+      setPaymentReceipts(receipts);
+      setStatus(`Queued ${receipt.amountSol} SOL via ${receipt.rail.toUpperCase()} with ${receipt.proofLayer.toUpperCase()} proofing; durable receipt stored locally`);
     } catch (error: any) {
       setStatus(`Payment error: ${error.message}`);
     }
+  };
+
+  const handleExportPaymentProof = (receipt: PrivatePaymentReceipt) => {
+    const payload = createPrivatePaymentProofPayload(receipt);
+    downloadFile(
+      `zolana-private-payment-proof-${receipt.id}.json`,
+      serializePrivatePaymentProofPayload(payload),
+    );
+    setStatus(`Exported EVM proof payload for ${receipt.id}`);
   };
 
   return (
@@ -275,7 +291,37 @@ const PaperWallet: React.FC = () => {
         {lastPayment && (
           <div className="mt-4 rounded-lg border border-gray-800 bg-black/40 p-4 text-sm text-gray-300">
             <p>Receipt: {lastPayment.id}</p>
-            <p>Commitment: {lastPayment.commitment}</p>
+            <p>Amount: {lastPayment.amountLamports} lamports</p>
+            <p>Commitment: {lastPayment.commitmentHex}</p>
+          </div>
+        )}
+        {paymentReceipts.length > 0 && (
+          <div className="mt-4 rounded-lg border border-gray-800 bg-black/40 p-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-200">Local Receipt History</p>
+                <p className="text-xs text-gray-500">Kept in this browser only; export payloads for EVM proof anchoring.</p>
+              </div>
+              <span className="text-xs text-cyan-300">{paymentReceipts.length} stored</span>
+            </div>
+            <div className="space-y-3">
+              {paymentReceipts.slice(0, 5).map((receipt) => (
+                <div key={receipt.id} className="rounded-lg border border-gray-800 bg-gray-950/70 p-3 text-sm text-gray-300">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-mono text-cyan-300 break-all">{receipt.id}</p>
+                      <p className="text-xs text-gray-500">
+                        {receipt.rail.toUpperCase()} / {receipt.settlement.toUpperCase()} settlement / {receipt.proofLayer.toUpperCase()} proof
+                      </p>
+                    </div>
+                    <button className="btn-secondary text-xs" onClick={() => handleExportPaymentProof(receipt)}>
+                      Export Proof Payload
+                    </button>
+                  </div>
+                  <p className="mt-2 font-mono text-xs text-gray-400 break-all">{receipt.commitmentHex}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </section>

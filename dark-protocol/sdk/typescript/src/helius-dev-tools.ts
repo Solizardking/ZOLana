@@ -447,7 +447,7 @@ export class HeliusDevTools {
       );
       return accounts.map(a => ({
         address: a.pubkey.toBase58(),
-        amount: (a.account as any).lamports / 1e9 ?? 0,
+        amount: ((a.account as any).lamports ?? 0) / 1e9,
         status: 'active' as const,
       }));
     } catch { return []; }

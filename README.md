@@ -43,8 +43,9 @@ What is now wired:
    Dark Clawd sidecar for reviewing public cold-storage metadata and payment
    posture.
 4. `dark-wallet/src/sdk/private-payment.ts` adds durable private payment
-   staging for `x402`, `AP2`, and `M2M`, with explicit Solana/EVM settlement
-   and an EVM proof-layer option.
+   staging for `x402`, `AP2`, and `M2M`, with explicit Solana/EVM settlement,
+   lamport-denominated receipts, local commitments, and exportable EVM proof
+   payloads.
 
 How the November Zcash-to-Solana port works:
 
@@ -56,6 +57,9 @@ How the November Zcash-to-Solana port works:
    are finalized.
 4. Helius supplies practical RPC access for devnet and mainnet-beta, while the
    paper-wallet generation path remains fully local and does not require RPC.
+5. Private-payment receipts are currently wallet-side durable records. They are
+   structured for later Solana settlement and EVM proof anchoring, but are not
+   yet a deployed on-chain verifier or final privacy settlement.
 
 Relevant env:
 

@@ -38,10 +38,13 @@ The wallet includes a typed staging primitive for:
 - `AP2`
 - `M2M`
 
-Each staged receipt records amount, recipient, rail, Solana/EVM settlement
-preference, proof layer, durable receipt flag, and a local commitment. This is a
-wallet-side primitive for the Dark Protocol path; it is not yet final on-chain
-settlement.
+Each staged receipt records amount, lamports, recipient, rail, Solana/EVM
+settlement preference, proof layer, durable receipt flag, nonce, and a local
+commitment. Durable receipts are stored in browser localStorage and can be
+exported as JSON proof payloads for later EVM anchoring or verifier work.
+
+This is a wallet-side primitive for the Dark Protocol path; it is not yet final
+on-chain settlement or a deployed verifier contract.
 
 ## Environment
 

@@ -1,8 +1,9 @@
 import { Connection, PublicKey, Transaction, Keypair } from '@solana/web3.js';
 import { AnchorProvider, Program, Idl } from '@coral-xyz/anchor';
 import { createHelius } from 'helius-sdk';
-import type { DarkProtocol } from './types/dark_protocol';
 import { createDarkProtocolConfigFromEnv, resolveHeliusRpcUrl, type DarkProtocolCluster } from './config';
+
+type DarkProtocol = any;
 
 export interface DarkProtocolConfig {
   heliusApiKey?: string;
@@ -48,7 +49,7 @@ export class DarkProtocolClient {
     // Create Helius client
     const helius = createHelius({
       apiKey: config.heliusApiKey ?? '',
-      network: config.cluster === 'mainnet-beta' ? 'mainnet-beta' : 'devnet',
+      network: config.cluster === 'mainnet-beta' ? 'mainnet' : 'devnet',
     });
     
     // Load program IDL and create Anchor program

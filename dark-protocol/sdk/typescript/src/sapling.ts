@@ -8,7 +8,7 @@
  */
 
 import { blake3 } from '@noble/hashes/blake3.js';
-import { sha256 } from '@noble/hashes/sha256.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 
 /** Sapling diversifier size (11 bytes, same as Zcash) */
 export const SAPLING_DIVERSIFIER_SIZE = 11;

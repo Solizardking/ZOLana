@@ -1,4 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import type { Note } from './types';
 
 /**
@@ -36,16 +37,14 @@ export class PrivacyUtils {
    * Generate spending key commitment
    */
   static generateSpendingKeyCommitment(spendingKey: Uint8Array): Uint8Array {
-    // In production, use proper hash function
     return this.hash(spendingKey);
   }
 
   /**
    * Hash data using SHA-256
    */
-  static async hash(data: Uint8Array): Promise<Uint8Array> {
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    return new Uint8Array(hashBuffer);
+  static hash(data: Uint8Array): Uint8Array {
+    return sha256(data);
   }
 
   /**
@@ -90,7 +89,7 @@ export class PrivacyUtils {
     combined.set(privateKey);
     combined.set(publicKey, privateKey.length);
 
-    return await this.hash(combined);
+    return this.hash(combined);
   }
 
   /**

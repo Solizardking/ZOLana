@@ -2,7 +2,7 @@ import { Keypair, PublicKey } from '@solana/web3.js';
 import { DarkProtocolClient } from './client';
 import type { ShieldedAddress, Note, WalletState } from './types';
 import * as bip39 from 'bip39';
-import { derivePath } from 'bip32';
+import derivePath from 'bip32';
 
 export class DarkWallet {
   private client: DarkProtocolClient;
