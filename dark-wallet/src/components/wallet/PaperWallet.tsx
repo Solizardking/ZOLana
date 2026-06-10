@@ -23,11 +23,16 @@ import {
   serializePrivatePaymentProofPayload,
   stagePrivatePayment,
   updatePrivatePaymentReceipt,
+  verifyPrivatePaymentProofPayload,
   type PrivatePaymentProofLayer,
   type PrivatePaymentRail,
   type PrivatePaymentReceipt,
   type PrivatePaymentSettlement,
 } from '../../sdk/private-payment';
+import {
+  createRailAuthorizationEnvelope,
+  serializeRailAuthorizationEnvelope,
+} from '../../sdk/rail-authorization';
 
 function downloadFile(filename: string, content: string): void {
   const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
@@ -75,6 +80,7 @@ const PaperWallet: React.FC = () => {
   const [paymentReceipts, setPaymentReceipts] = useState<PrivatePaymentReceipt[]>(() => loadPrivatePaymentReceipts());
   const [anchoringReceiptId, setAnchoringReceiptId] = useState<string | null>(null);
   const [verifyingReceiptId, setVerifyingReceiptId] = useState<string | null>(null);
+  const [checkingProofId, setCheckingProofId] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     setIsBusy(true);
@@ -175,6 +181,44 @@ const PaperWallet: React.FC = () => {
       serializePrivatePaymentProofPayload(payload),
     );
     setStatus(`Exported EVM proof payload for ${receipt.id} on chain ${runtime.evmChainId}`);
+  };
+
+  const handleCheckEvmProof = (receipt: PrivatePaymentReceipt) => {
+    setCheckingProofId(receipt.id);
+    try {
+      const options = {
+        evmChainId: runtime.evmChainId,
+        evmVerifyingContract: runtime.evmPrivatePaymentVerifier,
+      };
+      const payload = createPrivatePaymentProofPayload(receipt, options);
+      const verification = verifyPrivatePaymentProofPayload(payload, receipt, options);
+      if (!verification.ok) {
+        setStatus(`EVM proof payload mismatch: ${verification.mismatches.join('; ')}`);
+        return;
+      }
+
+      setStatus(`EVM proof payload verified for ${receipt.id}: ${verification.actualDigest.slice(0, 18)}...`);
+    } finally {
+      setCheckingProofId(null);
+    }
+  };
+
+  const handleExportRailAuthorization = (receipt: PrivatePaymentReceipt) => {
+    try {
+      const envelope = createRailAuthorizationEnvelope(receipt, {
+        evmChainId: runtime.evmChainId,
+        evmVerifyingContract: runtime.evmPrivatePaymentVerifier,
+        machinePayer: receipt.solanaAnchor?.payer ?? publicKey?.toBase58(),
+        machinePayee: receipt.recipient,
+      });
+      downloadFile(
+        `zolana-rail-authorization-${receipt.id}.json`,
+        serializeRailAuthorizationEnvelope(envelope),
+      );
+      setStatus(`Exported ${receipt.rail.toUpperCase()} rail authorization ${envelope.authorizationId}`);
+    } catch (error: any) {
+      setStatus(`Rail authorization error: ${error.message}`);
+    }
   };
 
   const handleAnchorPaymentReceipt = async (receipt: PrivatePaymentReceipt) => {
@@ -420,6 +464,12 @@ const PaperWallet: React.FC = () => {
                     <div className="flex flex-wrap gap-2">
                       <button className="btn-secondary text-xs" onClick={() => handleExportPaymentProof(receipt)}>
                         Export Proof Payload
+                      </button>
+                      <button className="btn-secondary text-xs" onClick={() => handleCheckEvmProof(receipt)} disabled={checkingProofId === receipt.id}>
+                        {checkingProofId === receipt.id ? 'Checking...' : 'Check EVM Proof'}
+                      </button>
+                      <button className="btn-secondary text-xs" onClick={() => handleExportRailAuthorization(receipt)}>
+                        Export Rail Auth
                       </button>
                       <button
                         className="btn-primary text-xs"

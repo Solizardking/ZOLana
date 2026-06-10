@@ -33,6 +33,13 @@ Dark Protocol is a comprehensive privacy framework for Solana that brings Zcash-
 - **Reliable Broadcasting**: Multiple regions for redundancy
 - **Enhanced APIs**: Rich transaction data
 
+### EVM Intent Proof Verifier
+- **Consume-once proofs**: `evm-verifier` records EIP-712 private-payment
+  proof digests once to reduce replay risk.
+- **Solana-bound receipts**: Proofs bind x402/AP2/M2M rail metadata to a
+  verified Solana Memo signature and cluster.
+- **Foundry tests**: Run `forge test` from `dark-protocol/evm-verifier`.
+
 ## Architecture
 
 ```

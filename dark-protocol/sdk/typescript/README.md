@@ -115,8 +115,14 @@ const anchored = markPrivatePaymentAnchored(receipt, {
   cluster: 'devnet',
 });
 
-const evmIntent = createPrivatePaymentEvmIntentProof(anchored);
-const exportable = createPrivatePaymentProofPayload(anchored);
+const evmIntent = createPrivatePaymentEvmIntentProof(anchored, {
+  chainId: 1,
+  verifyingContract: '0xVerifierContract',
+});
+const exportable = createPrivatePaymentProofPayload(anchored, {
+  evmChainId: 1,
+  evmVerifyingContract: '0xVerifierContract',
+});
 
 console.log(anchored.commitmentHex, evmIntent.digest, exportable.status);
 ```
@@ -135,8 +141,10 @@ payments over `x402`, `AP2`, and `M2M`. Solana anchoring records a signed Memo
 intent transaction against the same receipt. Verification fetches that
 transaction by signature and checks that the Memo payload matches the receipt.
 The EVM payload is an intent proof shape for later verifier or contract
-anchoring; it is not live EVM settlement by itself. The final Dark Protocol
-program IDL still needs settlement and proof verification wired on-chain.
+anchoring. `dark-protocol/evm-verifier` contains a Foundry verifier contract
+that can consume the EIP-712 proof digest once. This is not live EVM settlement
+by itself. The final Dark Protocol program IDL still needs settlement and proof
+verification wired on-chain.
 
 ## Private Swaps with ZK Proofs
 

@@ -103,6 +103,13 @@ export interface PrivatePaymentProofOptions {
   evmVerifyingContract?: string;
 }
 
+export interface PrivatePaymentProofVerification {
+  ok: boolean;
+  mismatches: string[];
+  expectedDigest: string;
+  actualDigest: string;
+}
+
 const PRIVATE_PAYMENT_STORAGE_KEY = 'zolana:dark-wallet:private-payments:v1';
 const MAX_PRIVATE_PAYMENT_RECEIPTS = 32;
 
@@ -411,6 +418,52 @@ export function createPrivatePaymentProofPayload(
       chainId: options.evmChainId,
       verifyingContract: options.evmVerifyingContract,
     }),
+  };
+}
+
+export function verifyPrivatePaymentProofPayload(
+  payload: PrivatePaymentProofPayload,
+  receipt: PrivatePaymentReceipt,
+  options: PrivatePaymentProofOptions = {},
+): PrivatePaymentProofVerification {
+  const expected = createPrivatePaymentProofPayload(receipt, options);
+  const checks: Array<[string, unknown, unknown]> = [
+    ['domain', payload.domain, expected.domain],
+    ['version', payload.version, expected.version],
+    ['receiptId', payload.receiptId, expected.receiptId],
+    ['rail', payload.rail, expected.rail],
+    ['settlement', payload.settlement, expected.settlement],
+    ['proofLayer', payload.proofLayer, expected.proofLayer],
+    ['durableReceipt', payload.durableReceipt, expected.durableReceipt],
+    ['recipient', payload.recipient, expected.recipient],
+    ['amountLamports', payload.amountLamports, expected.amountLamports],
+    ['commitmentHex', payload.commitmentHex, expected.commitmentHex],
+    ['nonce', payload.nonce, expected.nonce],
+    ['createdAt', payload.createdAt, expected.createdAt],
+    ['status', payload.status, expected.status],
+    ['memoHash', payload.memoHash, expected.memoHash],
+    ['evmIntentProof.domain', payload.evmIntentProof.domain, expected.evmIntentProof.domain],
+    ['evmIntentProof.version', payload.evmIntentProof.version, expected.evmIntentProof.version],
+    ['evmIntentProof.digest', payload.evmIntentProof.digest, expected.evmIntentProof.digest],
+    ['evmIntentProof.chainId', payload.evmIntentProof.eip712.domain.chainId, expected.evmIntentProof.eip712.domain.chainId],
+    [
+      'evmIntentProof.verifyingContract',
+      payload.evmIntentProof.eip712.domain.verifyingContract,
+      expected.evmIntentProof.eip712.domain.verifyingContract,
+    ],
+    ['evmIntentProof.message.solanaSignature', payload.evmIntentProof.eip712.message.solanaSignature, expected.evmIntentProof.eip712.message.solanaSignature],
+    ['evmIntentProof.message.solanaCluster', payload.evmIntentProof.eip712.message.solanaCluster, expected.evmIntentProof.eip712.message.solanaCluster],
+  ];
+
+  const mismatches = checks
+    .filter(([, actual, expectedValue]) => actual !== expectedValue)
+    .map(([field, actual, expectedValue]) => `${field}: expected ${String(expectedValue)}, got ${String(actual)}`);
+
+  return {
+    ok: mismatches.length === 0,
+    mismatches,
+    expectedDigest: expected.evmIntentProof.digest,
+    actualDigest: payload.evmIntentProof.digest,
   };
 }
 

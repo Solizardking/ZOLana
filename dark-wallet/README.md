@@ -49,6 +49,11 @@ settlement, proof layer, recipient, and payer. Receipts can also be exported as
 JSON proof payloads with an EIP-712-style EVM intent proof for later anchoring
 or verifier work.
 
+The wallet can also locally verify an exported proof payload by recomputing its
+digest from the receipt, Solana anchor metadata, `EVM_CHAIN_ID`, and optional
+`EVM_PRIVATE_PAYMENT_VERIFIER`. This proves the payload is internally
+consistent before it is handed to an EVM verifier or relayer.
+
 This is a wallet-side primitive for the Dark Protocol path; it is not yet final
 on-chain settlement or a deployed verifier contract.
 
@@ -81,6 +86,8 @@ SOLANA_CLUSTER=devnet
 XAI_API_KEY=
 XAI_BASE_URL=
 XAI_MODEL=
+EVM_CHAIN_ID=1
+EVM_PRIVATE_PAYMENT_VERIFIER=
 ```
 
 `HELIUS_RPC_URL` wins when present. Otherwise `HELIUS_API_KEY` builds a Helius

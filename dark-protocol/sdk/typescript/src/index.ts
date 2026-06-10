@@ -10,6 +10,7 @@ export * from './config';
 export * from './ai-agent';
 export * from './private-payment';
 export * from './intent';
+export * from './rail-authorization';
 export * from './helius-dev-tools';
 
 // Re-export commonly used Solana types

@@ -62,9 +62,11 @@ How the last-November Zcash-to-Solana port works:
    be anchored as Solana Memo intent transactions, then store the resulting
    signature, cluster, explorer URL, and status on the same receipt. The wallet
    can re-fetch that transaction and verify the Memo payload still matches the
-   receipt fields before exporting EVM proof intent. The EVM proof export is an
-   intent payload for later verifier or contract anchoring, not yet a deployed
-   on-chain verifier or final privacy settlement.
+   receipt fields before exporting EVM proof intent. The wallet also recomputes
+   and checks the EVM intent proof digest against the receipt, configured EVM
+   chain, and optional verifier address. The EVM proof export is an intent
+   payload for later verifier or contract anchoring, not yet a deployed on-chain
+   verifier or final privacy settlement.
 
 Relevant env:
 
