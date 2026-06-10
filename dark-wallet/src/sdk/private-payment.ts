@@ -196,10 +196,13 @@ export function loadPrivatePaymentReceipts(): PrivatePaymentReceipt[] {
         && typeof receipt.amountLamports === 'string'
         && typeof receipt.commitmentHex === 'string'
       ))
-      .map((receipt): PrivatePaymentReceipt => ({
-        ...receipt,
-        status: receipt.status === 'anchored' || receipt.status === 'failed' ? receipt.status : 'queued',
-      }))
+      .map((receipt): PrivatePaymentReceipt => {
+        const status: PrivatePaymentStatus =
+          receipt.status === 'anchored' || receipt.status === 'failed'
+            ? receipt.status
+            : 'queued';
+        return { ...receipt, status };
+      })
       .slice(0, MAX_PRIVATE_PAYMENT_RECEIPTS);
   } catch {
     return [];

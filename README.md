@@ -44,8 +44,8 @@ What is now wired:
    posture.
 4. `dark-wallet/src/sdk/private-payment.ts` adds durable private payment
    staging for `x402`, `AP2`, and `M2M`, with explicit Solana/EVM settlement,
-   lamport-denominated receipts, local commitments, and exportable EVM proof
-   payloads.
+   lamport-denominated receipts, local commitments, Solana anchor metadata, and
+   exportable EIP-712-style EVM intent proof payloads.
 
 How the last-November Zcash-to-Solana port works:
 
@@ -58,10 +58,11 @@ How the last-November Zcash-to-Solana port works:
    finalized.
 4. Helius supplies practical RPC access for devnet and mainnet-beta, while the
    paper-wallet generation path remains fully local and does not require RPC.
-5. Private-payment receipts are currently wallet-side durable records. They are
-   structured for later Solana settlement and EVM proof anchoring, and can be
-   anchored as Solana Memo intent transactions, but are not yet a deployed
-   on-chain verifier or final privacy settlement.
+5. Private-payment receipts are currently wallet-side durable records. They can
+   be anchored as Solana Memo intent transactions, then store the resulting
+   signature, cluster, explorer URL, and status on the same receipt. The EVM
+   proof export is an intent payload for later verifier or contract anchoring,
+   not yet a deployed on-chain verifier or final privacy settlement.
 
 Relevant env:
 
