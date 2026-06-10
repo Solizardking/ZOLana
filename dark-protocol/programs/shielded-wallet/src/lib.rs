@@ -19,7 +19,7 @@ use dark_protocol::crypto::{
     SAPLING_DIVERSIFIER_SIZE, MEMO_SIZE,
 };
 
-declare_id!("SHLDwa11etProgram1111111111111111111111111");
+declare_id!("1ujsjeHSdCtFVQdCFiohpRsy4auetTNw6M8vx8S4Wjv");
 
 #[program]
 pub mod shielded_wallet {

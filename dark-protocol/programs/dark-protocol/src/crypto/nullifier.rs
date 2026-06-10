@@ -24,5 +24,5 @@ pub fn derive_nullifier_secret(spending_key: &[u8; 32], nonce: u64) -> [u8; 32] 
     hasher.update(b"nullifier_secret");
     hasher.update(spending_key);
     hasher.update(&nonce.to_le_bytes());
-    (*hasher.finalize().as_bytes()).into()
+    hasher.finalize().into()
 }

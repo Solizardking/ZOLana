@@ -212,7 +212,7 @@ impl SaplingFullViewingKey {
         hasher.update(&self.nk);
         hasher.update(&self.ovk);
         hasher.update(b"sapling_fvk_fingerprint");
-        (*hasher.finalize().as_bytes()).into()
+        hasher.finalize().into()
     }
 
     /// Derive default payment address
@@ -472,7 +472,7 @@ fn crh_ivk(ak: &[u8; 32], nk: &[u8; 32]) -> [u8; 32] {
     hasher.update(ak);
     hasher.update(nk);
 
-    (*hasher.finalize().as_bytes()).into()
+    hasher.finalize().into()
 }
 
 /// Derive public key from private key (simplified)
@@ -482,7 +482,7 @@ fn derive_public_key(sk: &[u8; 32]) -> [u8; 32] {
     let mut hasher = blake3::Hasher::new();
     hasher.update(b"Zcash_DerivePublic");
     hasher.update(sk);
-    (*hasher.finalize().as_bytes()).into()
+    hasher.finalize().into()
 }
 
 /// Derive pk_d from incoming viewing key and diversifier
@@ -493,7 +493,7 @@ fn derive_pk_d(ivk: &[u8; 32], diversifier: &[u8; 11]) -> [u8; 32] {
     hasher.update(b"Zcash_DerivePkD");
     hasher.update(ivk);
     hasher.update(diversifier);
-    (*hasher.finalize().as_bytes()).into()
+    hasher.finalize().into()
 }
 
 // =============================================================================

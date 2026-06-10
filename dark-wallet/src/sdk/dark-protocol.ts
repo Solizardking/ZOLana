@@ -3,9 +3,8 @@
  * This is a minimal implementation to get the wallet working
  */
 
-import { Connection, PublicKey, Transaction, Keypair, SystemProgram } from '@solana/web3.js';
-import * as anchor from '@coral-xyz/anchor';
-import { AnchorProvider, Program, web3 } from '@coral-xyz/anchor';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { AnchorProvider } from '@coral-xyz/anchor';
 
 // Dark Protocol Program ID on Devnet
 export const DARK_PROTOCOL_PROGRAM_ID = new PublicKey('Frf98UwzjLqiFUTNVY8kEdZsUW3xCuuSm8MSayBSmk4X');

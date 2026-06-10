@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { createDarkProtocolClient, isValidShieldedAddress } from '../../sdk/dark-protocol';
+import { createDarkProtocolClient } from '../../sdk/dark-protocol';
 
 const PrivateTransfer: React.FC = () => {
   const wallet = useWallet();

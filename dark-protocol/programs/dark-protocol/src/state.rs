@@ -182,13 +182,45 @@ pub struct EncryptedNote {
 }
 
 /// Transaction metadata for privacy tracking
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(Clone)]
 pub struct PrivateTransactionMetadata {
     pub input_count: u8,
     pub output_count: u8,
     pub fee: u64,
     pub timestamp: i64,
     pub transaction_type: TransactionType,
+}
+
+impl anchor_lang::AnchorSerialize for PrivateTransactionMetadata {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.input_count.serialize(writer)?;
+        self.output_count.serialize(writer)?;
+        self.fee.serialize(writer)?;
+        self.timestamp.serialize(writer)?;
+        self.transaction_type.serialize(writer)
+    }
+}
+
+impl anchor_lang::AnchorDeserialize for PrivateTransactionMetadata {
+    fn deserialize(buf: &mut &[u8]) -> std::io::Result<Self> {
+        Ok(Self {
+            input_count: u8::deserialize(buf)?,
+            output_count: u8::deserialize(buf)?,
+            fee: u64::deserialize(buf)?,
+            timestamp: i64::deserialize(buf)?,
+            transaction_type: TransactionType::deserialize(buf)?,
+        })
+    }
+
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        Ok(Self {
+            input_count: u8::deserialize_reader(reader)?,
+            output_count: u8::deserialize_reader(reader)?,
+            fee: u64::deserialize_reader(reader)?,
+            timestamp: i64::deserialize_reader(reader)?,
+            transaction_type: TransactionType::deserialize_reader(reader)?,
+        })
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -280,7 +312,7 @@ pub struct TEEAttestation {
 }
 
 /// Privacy-preserving swap route
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(Clone)]
 pub struct PrivateSwapRoute {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
@@ -288,6 +320,41 @@ pub struct PrivateSwapRoute {
     pub min_output_amount: u64,
     pub jupiter_route_data: Vec<u8>,
     pub privacy_level: PrivacyLevel,
+}
+
+impl anchor_lang::AnchorSerialize for PrivateSwapRoute {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.input_token.serialize(writer)?;
+        self.output_token.serialize(writer)?;
+        self.input_amount.serialize(writer)?;
+        self.min_output_amount.serialize(writer)?;
+        self.jupiter_route_data.serialize(writer)?;
+        self.privacy_level.serialize(writer)
+    }
+}
+
+impl anchor_lang::AnchorDeserialize for PrivateSwapRoute {
+    fn deserialize(buf: &mut &[u8]) -> std::io::Result<Self> {
+        Ok(Self {
+            input_token: Pubkey::deserialize(buf)?,
+            output_token: Pubkey::deserialize(buf)?,
+            input_amount: u64::deserialize(buf)?,
+            min_output_amount: u64::deserialize(buf)?,
+            jupiter_route_data: Vec::<u8>::deserialize(buf)?,
+            privacy_level: PrivacyLevel::deserialize(buf)?,
+        })
+    }
+
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        Ok(Self {
+            input_token: Pubkey::deserialize_reader(reader)?,
+            output_token: Pubkey::deserialize_reader(reader)?,
+            input_amount: u64::deserialize_reader(reader)?,
+            min_output_amount: u64::deserialize_reader(reader)?,
+            jupiter_route_data: Vec::<u8>::deserialize_reader(reader)?,
+            privacy_level: PrivacyLevel::deserialize_reader(reader)?,
+        })
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -325,5 +392,32 @@ impl anchor_lang::AnchorDeserialize for PrivacyLevel {
             2 => Ok(PrivacyLevel::Minimal),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid enum discriminant")),
         }
+    }
+}
+
+impl anchor_lang::idl::IdlBuild for PrivacyLevel {
+    fn insert_types(_types: &mut std::collections::BTreeMap<String, Vec<anchor_lang::idl::IdlTypeDefinition>>) {
+        _types.insert("privacy_level".to_string(), vec![
+            anchor_lang::idl::IdlTypeDefinition {
+                name: "privacy_level".to_string(),
+                variants: Some(vec![
+                    anchor_lang::idl::IdlVariant {
+                        name: "full".to_string(),
+                        fields: None,
+                    },
+                    anchor_lang::idl::IdlVariant {
+                        name: "partial".to_string(),
+                        fields: None,
+                    },
+                    anchor_lang::idl::IdlVariant {
+                        name: "minimal".to_string(),
+                        fields: None,
+                    },
+                ]),
+                ty: anchor_lang::idl::IdlDefinedType::Enum {
+                    generics: std::vec::Vec::new(),
+                },
+            },
+        ]);
     }
 }

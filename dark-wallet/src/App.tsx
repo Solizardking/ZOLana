@@ -1,12 +1,9 @@
-import React, { useState } from 'react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import WalletProvider from './contexts/WalletProvider';
 import Dashboard from './components/Dashboard';
 import './App.css';
 
 function App() {
-  const [isConnected, setIsConnected] = useState(false);
-
   return (
     <WalletProvider>
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">

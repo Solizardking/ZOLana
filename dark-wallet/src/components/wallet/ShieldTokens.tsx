@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { createDarkProtocolClient } from '../../sdk/dark-protocol';
 
 const ShieldTokens: React.FC = () => {

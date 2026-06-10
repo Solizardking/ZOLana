@@ -6,19 +6,16 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-dark_protocol = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-privacy_pool = "PrivacyPool111111111111111111111111111111"
-shielded_token = "ShieldToken111111111111111111111111111111"
+dark_protocol = "Bf3jjD5Pojx5mHZVwJCWg7wC1oPg2hsn7ufsWaKoHv9E"
+shielded_wallet = "1ujsjeHSdCtFVQdCFiohpRsy4auetTNw6M8vx8S4Wjv"
 
 [programs.devnet]
-dark_protocol = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-privacy_pool = "PrivacyPool111111111111111111111111111111"
-shielded_token = "ShieldToken111111111111111111111111111111"
+dark_protocol = "Bf3jjD5Pojx5mHZVwJCWg7wC1oPg2hsn7ufsWaKoHv9E"
+shielded_wallet = "1ujsjeHSdCtFVQdCFiohpRsy4auetTNw6M8vx8S4Wjv"
 
 [programs.mainnet]
-dark_protocol = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-privacy_pool = "PrivacyPool111111111111111111111111111111"
-shielded_token = "ShieldToken111111111111111111111111111111"
+dark_protocol = "Bf3jjD5Pojx5mHZVwJCWg7wC1oPg2hsn7ufsWaKoHv9E"
+shielded_wallet = "1ujsjeHSdCtFVQdCFiohpRsy4auetTNw6M8vx8S4Wjv"
 
 [registry]
 url = "https://api.apr.dev"
@@ -33,6 +30,5 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 [workspace]
 members = [
     "programs/dark-protocol",
-    "programs/privacy-pool",
-    "programs/shielded-token"
+    "programs/shielded-wallet"
 ]

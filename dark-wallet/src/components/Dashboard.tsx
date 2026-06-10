@@ -10,7 +10,7 @@ const Dashboard: React.FC = () => {
   const { connection } = useConnection();
   const [activeTab, setActiveTab] = useState<'shield' | 'unshield' | 'transfer'>('shield');
   const [balance, setBalance] = useState<number>(0);
-  const [shieldedBalance, setShieldedBalance] = useState<number>(0);
+  const [shieldedBalance] = useState<number>(0);
 
   // Fetch transparent balance
   React.useEffect(() => {

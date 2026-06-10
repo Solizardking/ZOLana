@@ -13,7 +13,8 @@ no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
-default = []
+default = ["no-idl"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
 anchor-lang = { workspace = true }
@@ -22,15 +23,23 @@ solana-program = { workspace = true }
 
 # Cryptography dependencies for Zcash privacy
 blake2b_simd = "1.0"
+blake2 = "0.10"
 chacha20poly1305 = "0.9"
 sha2 = { workspace = true }
 sha3 = { workspace = true }
 blake3 = { workspace = true }
 curve25519-dalek = { workspace = true }
 
+# Arkworks ZK proof dependencies
+ark-ff = { workspace = true }
+ark-ec = { workspace = true }
+ark-serialize = { workspace = true }
+ark-std = { workspace = true }
+
 # Serialization
 borsh = { workspace = true }
 bytemuck = "1.14"
+bs58 = { workspace = true }
 
 [dev-dependencies]
 solana-sdk = { workspace = true }
