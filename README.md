@@ -47,19 +47,21 @@ What is now wired:
    lamport-denominated receipts, local commitments, and exportable EVM proof
    payloads.
 
-How the November Zcash-to-Solana port works:
+How the last-November Zcash-to-Solana port works:
 
 1. The original `paper/` generator remains the Zcash/Sapling reference for
    offline entropy, printable cold storage, and air-gapped key handling.
 2. Dark Wallet keeps that workflow but outputs Solana keypairs for SVM use.
 3. Shielding and private transfers stay exposed in the wallet as staged
-   privacy operations while Dark Protocol program IDs and live proof plumbing
-   are finalized.
+   privacy operations and now anchor wallet-signed Solana Memo intent
+   transactions while Dark Protocol program IDs and live proof plumbing are
+   finalized.
 4. Helius supplies practical RPC access for devnet and mainnet-beta, while the
    paper-wallet generation path remains fully local and does not require RPC.
 5. Private-payment receipts are currently wallet-side durable records. They are
-   structured for later Solana settlement and EVM proof anchoring, but are not
-   yet a deployed on-chain verifier or final privacy settlement.
+   structured for later Solana settlement and EVM proof anchoring, and can be
+   anchored as Solana Memo intent transactions, but are not yet a deployed
+   on-chain verifier or final privacy settlement.
 
 Relevant env:
 

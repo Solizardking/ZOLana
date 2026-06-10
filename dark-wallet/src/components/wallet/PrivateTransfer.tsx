@@ -37,7 +37,7 @@ const PrivateTransfer: React.FC = () => {
         memo
       );
 
-      setStatus(`Successfully sent ${amount} SOL privately! 🎉\nTransaction: ${signature.slice(0, 20)}...`);
+      setStatus(`Private transfer intent anchored for ${amount} SOL.\nTransaction: ${signature.slice(0, 20)}...`);
       setRecipientAddress('');
       setAmount('0.1');
       setMemo('');
@@ -56,7 +56,7 @@ const PrivateTransfer: React.FC = () => {
           → Private Transfer
         </h3>
         <p className="text-gray-400">
-          Send SOL privately between shielded addresses
+          Anchor a shielded-address transfer intent on Solana
         </p>
       </div>
 
@@ -132,7 +132,7 @@ const PrivateTransfer: React.FC = () => {
               Sending Privately...
             </span>
           ) : (
-            `→ Send ${amount} SOL Privately`
+            `Anchor Private Intent for ${amount} SOL`
           )}
         </button>
 
@@ -150,15 +150,13 @@ const PrivateTransfer: React.FC = () => {
       <div className="bg-pink-500/10 border border-pink-500/30 rounded-lg p-4">
         <h4 className="font-semibold mb-2 flex items-center text-pink-400">
           <span className="mr-2">ℹ️</span>
-          Complete Privacy
+          Current Private Transfer Path
         </h4>
         <ul className="text-sm text-gray-400 space-y-1">
-          <li>✓ Sender identity hidden</li>
-          <li>✓ Receiver identity hidden</li>
-          <li>✓ Transaction amount hidden</li>
-          <li>✓ Memo encrypted (only recipient can read)</li>
-          <li>✓ Transaction graph obfuscated</li>
-          <li>✓ Takes ~800ms to confirm</li>
+          <li>✓ Wallet signs a Solana Memo transaction over a private-transfer commitment</li>
+          <li>✓ Recipient is represented as a Sapling-style `zs1` or ZOLana `zsol1` shielded address</li>
+          <li>✓ Memo text is hashed before anchoring</li>
+          <li>✓ Full note spending and verifier settlement remain Dark Protocol program work</li>
         </ul>
       </div>
     </div>

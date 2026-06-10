@@ -19,7 +19,7 @@ const UnshieldTokens: React.FC = () => {
     }
 
     setIsLoading(true);
-    setStatus('Generating ZK proof and unshielding...');
+    setStatus('Anchoring unshield intent...');
 
     try {
       // Create Dark Protocol client
@@ -35,10 +35,10 @@ const UnshieldTokens: React.FC = () => {
         }
       }
 
-      // Unshield tokens using Dark Protocol (includes ZK proof generation)
+      // Anchor unshield intent using Dark Protocol commitment rail.
       const signature = await darkClient.unshieldTokens(parseFloat(amount), recipientPubkey);
 
-      setStatus(`Successfully unshielded ${amount} SOL! 🎉\nTransaction: ${signature.slice(0, 20)}...`);
+      setStatus(`Unshield intent anchored for ${amount} SOL.\nTransaction: ${signature.slice(0, 20)}...`);
       setAmount('0.1');
       setRecipient('');
     } catch (error: any) {
@@ -56,7 +56,7 @@ const UnshieldTokens: React.FC = () => {
           🔓 Unshield Tokens
         </h3>
         <p className="text-gray-400">
-          Convert shielded SOL back to transparent SOL with zero-knowledge proof
+          Anchor an unshield commitment before full verifier settlement
         </p>
       </div>
 
@@ -115,10 +115,10 @@ const UnshieldTokens: React.FC = () => {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Generating ZK Proof...
+              Anchoring Intent...
             </span>
           ) : (
-            `🔓 Unshield ${amount} SOL`
+            `Anchor Unshield Intent for ${amount} SOL`
           )}
         </button>
 
@@ -136,15 +136,13 @@ const UnshieldTokens: React.FC = () => {
       <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
         <h4 className="font-semibold mb-2 flex items-center text-emerald-400">
           <span className="mr-2">ℹ️</span>
-          How Unshielding Works
+          Current Unshielding Path
         </h4>
         <ul className="text-sm text-gray-400 space-y-1">
-          <li>• Select which shielded note to spend</li>
-          <li>• Generate a zero-knowledge proof of ownership</li>
-          <li>• Prove you own the note without revealing which one</li>
-          <li>• Mark nullifier as spent (prevents double-spending)</li>
-          <li>• Receive transparent SOL at destination address</li>
-          <li>• Takes ~600ms (includes ZK proof generation)</li>
+          <li>• The wallet signs a Solana Memo transaction over an unshield commitment</li>
+          <li>• Recipient is included as a transparent Solana address</li>
+          <li>• The transaction is submitted through Helius or the configured Solana RPC</li>
+          <li>• Full note spending, nullifiers, and ZK verification remain Dark Protocol program work</li>
         </ul>
       </div>
     </div>

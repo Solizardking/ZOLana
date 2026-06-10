@@ -27,7 +27,7 @@ const ShieldTokens: React.FC = () => {
       // Shield tokens using Dark Protocol
       const signature = await darkClient.shieldTokens(parseFloat(amount), memo);
 
-      setStatus(`Successfully shielded ${amount} SOL! 🎉\nTransaction: ${signature.slice(0, 20)}...`);
+      setStatus(`Shield intent anchored for ${amount} SOL.\nTransaction: ${signature.slice(0, 20)}...`);
       setAmount('0.1');
       setMemo('');
     } catch (error: any) {
@@ -45,7 +45,7 @@ const ShieldTokens: React.FC = () => {
           🔒 Shield Tokens
         </h3>
         <p className="text-gray-400">
-          Convert transparent SOL into shielded SOL for complete privacy
+          Anchor a shield commitment on Solana before full verifier settlement
         </p>
       </div>
 
@@ -100,7 +100,7 @@ const ShieldTokens: React.FC = () => {
               Shielding...
             </span>
           ) : (
-            `🔒 Shield ${amount} SOL`
+            `Anchor Shield Intent for ${amount} SOL`
           )}
         </button>
 
@@ -118,14 +118,13 @@ const ShieldTokens: React.FC = () => {
       <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
         <h4 className="font-semibold mb-2 flex items-center text-purple-400">
           <span className="mr-2">ℹ️</span>
-          How Shielding Works
+          Current Shielding Path
         </h4>
         <ul className="text-sm text-gray-400 space-y-1">
-          <li>• Your transparent SOL is converted to shielded SOL</li>
-          <li>• A private note is created with Zcash Sapling encryption</li>
-          <li>• Only you can decrypt it with your viewing key</li>
-          <li>• Sender, receiver, and amount are hidden</li>
-          <li>• Transaction takes ~400ms to confirm</li>
+          <li>• The wallet signs a Solana Memo transaction over a shield commitment</li>
+          <li>• The memo stores amount commitment metadata, not plaintext private memo text</li>
+          <li>• Helius or the configured Solana RPC submits the transaction</li>
+          <li>• This is the live SVM intent rail while the Dark Protocol verifier is finalized</li>
         </ul>
       </div>
     </div>

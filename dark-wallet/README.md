@@ -5,17 +5,17 @@ wallet generation, and agent-reviewed private payment staging.
 
 ## Current Surfaces
 
-- `Shield` - stages transparent SOL into the private balance lane.
-- `Unshield` - stages shielded SOL back to a transparent recipient.
-- `Private Transfer` - stages shielded-address transfers.
+- `Shield` - anchors a shield commitment as a Solana Memo transaction.
+- `Unshield` - anchors an unshield commitment for a transparent recipient.
+- `Private Transfer` - anchors shielded-address transfer commitments.
 - `Paper Wallet` - generates a local Solana paper wallet without needing an
   injected wallet or RPC connection.
 
 ## Zcash Paper Wallet Port
 
 The original `paper/` tree comes from a Zcash Sapling paper-wallet generator.
-The browser wallet keeps the offline workflow but changes the key material for
-Solana:
+The last-November browser wallet port keeps the offline workflow but changes
+the key material for Solana:
 
 - Sapling spending keys are replaced with Solana `Keypair.fromSeed`.
 - The printable sheet carries public key, secret key JSON, and fingerprints.
@@ -45,6 +45,20 @@ exported as JSON proof payloads for later EVM anchoring or verifier work.
 
 This is a wallet-side primitive for the Dark Protocol path; it is not yet final
 on-chain settlement or a deployed verifier contract.
+
+## SVM Intent Anchoring
+
+Shield, unshield, private transfer, and private-payment receipts now produce
+wallet-signed Solana transactions using the Memo program. The payload contains a
+ZOLana Dark intent envelope with action, amount in lamports, commitment, and
+hashed memo metadata. The connected wallet pays the normal transaction fee and
+the configured RPC path (`HELIUS_RPC_URL`, `HELIUS_API_KEY`, or
+`SOLANA_RPC_URL`) submits it on devnet or mainnet-beta.
+
+No SOL is transferred into a placeholder custody account by these intent
+transactions. They are durable SVM anchors for the privacy workflow while the
+Dark Protocol verifier, note accounting, and final settlement programs are
+completed.
 
 ## Environment
 

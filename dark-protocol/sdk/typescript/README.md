@@ -61,6 +61,11 @@ XAI_MODEL=
 mainnet-beta Helius endpoint from `HELIUS_API_KEY`. Without Helius config, it
 falls back to the public Solana RPC endpoint for the selected cluster.
 
+The last-November Zcash-to-Solana port keeps Sapling-style language for notes,
+commitments, nullifiers, and paper-wallet custody, but the SDK runtime resolves
+SVM devnet/mainnet-beta RPC through Helius and emits Solana-compatible wallet
+and payment primitives.
+
 ## Dark Clawd Agent
 
 ```typescript

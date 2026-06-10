@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import {
   generateSolanaPaperWallet,
   paperWalletFileName,
@@ -11,6 +11,7 @@ import {
   getDarkRuntimeConfig,
 } from '../../utils/runtime';
 import { createDarkClawdAgent } from '../../utils/dark-clawd-agent';
+import { createDarkProtocolClient } from '../../sdk/dark-protocol';
 import {
   appendPrivatePaymentReceipt,
   createPrivatePaymentProofPayload,
@@ -36,7 +37,9 @@ function downloadFile(filename: string, content: string): void {
 }
 
 const PaperWallet: React.FC = () => {
-  const { publicKey } = useWallet();
+  const wallet = useWallet();
+  const { publicKey } = wallet;
+  const { connection } = useConnection();
   const runtime = useMemo(() => getDarkRuntimeConfig(), []);
   const agent = useMemo(
     () =>
@@ -65,6 +68,7 @@ const PaperWallet: React.FC = () => {
   const [paymentMemo, setPaymentMemo] = useState('private settlement');
   const [lastPayment, setLastPayment] = useState<PrivatePaymentReceipt | null>(null);
   const [paymentReceipts, setPaymentReceipts] = useState<PrivatePaymentReceipt[]>(() => loadPrivatePaymentReceipts());
+  const [anchoringReceiptId, setAnchoringReceiptId] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     setIsBusy(true);
@@ -162,6 +166,25 @@ const PaperWallet: React.FC = () => {
       serializePrivatePaymentProofPayload(payload),
     );
     setStatus(`Exported EVM proof payload for ${receipt.id}`);
+  };
+
+  const handleAnchorPaymentReceipt = async (receipt: PrivatePaymentReceipt) => {
+    if (!publicKey) {
+      setStatus('Connect a wallet to anchor the private-payment intent on Solana');
+      return;
+    }
+
+    setAnchoringReceiptId(receipt.id);
+    setStatus(`Anchoring ${receipt.id} on Solana via Memo intent...`);
+    try {
+      const darkClient = createDarkProtocolClient(connection, wallet);
+      const signature = await darkClient.anchorPrivatePayment(receipt);
+      setStatus(`Anchored ${receipt.id} on Solana: ${signature.slice(0, 20)}...`);
+    } catch (error: any) {
+      setStatus(`Payment anchor error: ${error.message}`);
+    } finally {
+      setAnchoringReceiptId(null);
+    }
   };
 
   return (
@@ -300,7 +323,7 @@ const PaperWallet: React.FC = () => {
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
                 <p className="text-sm font-semibold text-gray-200">Local Receipt History</p>
-                <p className="text-xs text-gray-500">Kept in this browser only; export payloads for EVM proof anchoring.</p>
+                <p className="text-xs text-gray-500">Kept in this browser only; export payloads for EVM proof anchoring or anchor the intent on Solana.</p>
               </div>
               <span className="text-xs text-cyan-300">{paymentReceipts.length} stored</span>
             </div>
@@ -314,9 +337,18 @@ const PaperWallet: React.FC = () => {
                         {receipt.rail.toUpperCase()} / {receipt.settlement.toUpperCase()} settlement / {receipt.proofLayer.toUpperCase()} proof
                       </p>
                     </div>
-                    <button className="btn-secondary text-xs" onClick={() => handleExportPaymentProof(receipt)}>
-                      Export Proof Payload
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button className="btn-secondary text-xs" onClick={() => handleExportPaymentProof(receipt)}>
+                        Export Proof Payload
+                      </button>
+                      <button
+                        className="btn-primary text-xs"
+                        onClick={() => handleAnchorPaymentReceipt(receipt)}
+                        disabled={!publicKey || anchoringReceiptId === receipt.id}
+                      >
+                        {anchoringReceiptId === receipt.id ? 'Anchoring...' : 'Anchor on Solana'}
+                      </button>
+                    </div>
                   </div>
                   <p className="mt-2 font-mono text-xs text-gray-400 break-all">{receipt.commitmentHex}</p>
                 </div>

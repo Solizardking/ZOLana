@@ -3,11 +3,34 @@
  * This is a minimal implementation to get the wallet working
  */
 
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { AnchorProvider } from '@coral-xyz/anchor';
+import { Buffer } from 'buffer';
+import type { PrivatePaymentReceipt } from './private-payment';
 
 // Dark Protocol Program ID on Devnet
 export const DARK_PROTOCOL_PROGRAM_ID = new PublicKey('Frf98UwzjLqiFUTNVY8kEdZsUW3xCuuSm8MSayBSmk4X');
+export const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+
+export type DarkIntentAction = 'shield' | 'unshield' | 'private_transfer' | 'private_payment';
+
+export interface DarkIntentPayload {
+  protocol: 'zolana.dark';
+  version: 1;
+  action: DarkIntentAction;
+  payer: string;
+  amountLamports: string;
+  commitment: string;
+  createdAt: number;
+  memoHash?: string;
+  recipient?: string;
+  shieldedAddress?: string;
+  rail?: 'x402' | 'ap2' | 'm2m';
+  settlement?: 'solana' | 'evm';
+  proofLayer?: 'solana' | 'evm';
+  durableReceipt?: boolean;
+  receiptId?: string;
+}
 
 // Simplified IDL type (we'll need to generate the full one from the program)
 export interface DarkProtocolIDL {
@@ -37,6 +60,78 @@ export class DarkProtocolClient {
     }
   }
 
+  private amountToLamports(amount: number): string {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error('Amount must be greater than zero');
+    }
+
+    return BigInt(Math.round(amount * 1_000_000_000)).toString();
+  }
+
+  private stableHex(input: string, bytes = 32): string {
+    const output = new Uint8Array(bytes);
+    let h1 = 0x811c9dc5;
+    let h2 = 0x01000193;
+
+    for (let index = 0; index < input.length; index += 1) {
+      const code = input.charCodeAt(index);
+      h1 ^= code;
+      h1 = Math.imul(h1, 0x01000193);
+      h2 ^= code + index;
+      h2 = Math.imul(h2, 0x85ebca6b);
+    }
+
+    for (let index = 0; index < output.length; index += 1) {
+      h1 ^= h2 + index;
+      h1 = Math.imul(h1, 0xc2b2ae35);
+      h2 ^= h1 >>> 13;
+      output[index] = (h1 ^ h2 ^ (h1 >>> 16)) & 0xff;
+    }
+
+    return Array.from(output, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  }
+
+  private memoHash(memo?: string): string | undefined {
+    const trimmed = memo?.trim();
+    return trimmed ? `0x${this.stableHex(trimmed, 16)}` : undefined;
+  }
+
+  private createCommitment(action: DarkIntentAction, fields: string[]): string {
+    return `0x${this.stableHex([action, ...fields, Date.now().toString()].join('|'))}`;
+  }
+
+  buildIntentTransaction(payload: DarkIntentPayload): Transaction {
+    if (!this.wallet.publicKey) {
+      throw new Error('Wallet not connected');
+    }
+
+    const encoded = Buffer.from(JSON.stringify(payload), 'utf8');
+    const transaction = new Transaction().add(new TransactionInstruction({
+      programId: MEMO_PROGRAM_ID,
+      keys: [{ pubkey: this.wallet.publicKey, isSigner: true, isWritable: false }],
+      data: encoded,
+    }));
+    transaction.feePayer = this.wallet.publicKey;
+    return transaction;
+  }
+
+  async sendIntent(payload: DarkIntentPayload): Promise<string> {
+    if (!this.wallet.publicKey) {
+      throw new Error('Wallet not connected');
+    }
+
+    if (typeof this.wallet.sendTransaction !== 'function') {
+      throw new Error('Connected wallet cannot send transactions');
+    }
+
+    const transaction = this.buildIntentTransaction(payload);
+    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
+    transaction.recentBlockhash = blockhash;
+    const signature = await this.wallet.sendTransaction(transaction, this.connection);
+    await this.connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+    return signature;
+  }
+
   /**
    * Shield tokens - convert transparent SOL to shielded SOL
    */
@@ -45,15 +140,23 @@ export class DarkProtocolClient {
       throw new Error('Wallet not connected');
     }
 
-    // TODO: Implement actual shield transaction
-    // For now, return a mock transaction signature
-    console.log(`Shielding ${amount} SOL with memo: ${memo || 'none'}`);
+    const amountLamports = this.amountToLamports(amount);
+    const commitment = this.createCommitment('shield', [
+      this.wallet.publicKey.toBase58(),
+      amountLamports,
+      memo ?? '',
+    ]);
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Return mock signature
-    return '3' + 'x'.repeat(87); // Mock transaction signature
+    return this.sendIntent({
+      protocol: 'zolana.dark',
+      version: 1,
+      action: 'shield',
+      payer: this.wallet.publicKey.toBase58(),
+      amountLamports,
+      commitment,
+      createdAt: Date.now(),
+      memoHash: this.memoHash(memo),
+    });
   }
 
   /**
@@ -65,15 +168,23 @@ export class DarkProtocolClient {
     }
 
     const recipientAddress = recipient || this.wallet.publicKey;
+    const amountLamports = this.amountToLamports(amount);
+    const commitment = this.createCommitment('unshield', [
+      this.wallet.publicKey.toBase58(),
+      recipientAddress.toBase58(),
+      amountLamports,
+    ]);
 
-    // TODO: Implement actual unshield transaction with ZK proof
-    console.log(`Unshielding ${amount} SOL to ${recipientAddress.toString()}`);
-
-    // Simulate ZK proof generation and network delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    // Return mock signature
-    return '4' + 'x'.repeat(87); // Mock transaction signature
+    return this.sendIntent({
+      protocol: 'zolana.dark',
+      version: 1,
+      action: 'unshield',
+      payer: this.wallet.publicKey.toBase58(),
+      recipient: recipientAddress.toBase58(),
+      amountLamports,
+      commitment,
+      createdAt: Date.now(),
+    });
   }
 
   /**
@@ -93,17 +204,48 @@ export class DarkProtocolClient {
       throw new Error('Invalid shielded address. Must start with zs1 or zsol1');
     }
 
-    // TODO: Implement actual private transfer
-    console.log(`Private transfer: ${amount} SOL to ${recipientAddress}`);
-    if (memo) {
-      console.log(`Encrypted memo: ${memo}`);
+    const amountLamports = this.amountToLamports(amount);
+    const commitment = this.createCommitment('private_transfer', [
+      this.wallet.publicKey.toBase58(),
+      recipientAddress,
+      amountLamports,
+      memo ?? '',
+    ]);
+
+    return this.sendIntent({
+      protocol: 'zolana.dark',
+      version: 1,
+      action: 'private_transfer',
+      payer: this.wallet.publicKey.toBase58(),
+      shieldedAddress: recipientAddress,
+      amountLamports,
+      commitment,
+      createdAt: Date.now(),
+      memoHash: this.memoHash(memo),
+    });
+  }
+
+  async anchorPrivatePayment(receipt: PrivatePaymentReceipt): Promise<string> {
+    if (!this.wallet.publicKey) {
+      throw new Error('Wallet not connected');
     }
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 2500));
-
-    // Return mock signature
-    return '5' + 'x'.repeat(87); // Mock transaction signature
+    return this.sendIntent({
+      protocol: 'zolana.dark',
+      version: 1,
+      action: 'private_payment',
+      payer: this.wallet.publicKey.toBase58(),
+      recipient: receipt.recipient,
+      amountLamports: receipt.amountLamports,
+      commitment: receipt.commitmentHex,
+      createdAt: receipt.createdAt,
+      memoHash: this.memoHash(receipt.memo),
+      rail: receipt.rail,
+      settlement: receipt.settlement,
+      proofLayer: receipt.proofLayer,
+      durableReceipt: receipt.durableReceipt,
+      receiptId: receipt.id,
+    });
   }
 
   /**
