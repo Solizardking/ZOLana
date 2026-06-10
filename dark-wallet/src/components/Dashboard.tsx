@@ -5,15 +5,17 @@ import ShieldTokens from './wallet/ShieldTokens';
 import UnshieldTokens from './wallet/UnshieldTokens';
 import PrivateTransfer from './wallet/PrivateTransfer';
 import PaperWallet from './wallet/PaperWallet';
+import HeliusViz from './HeliusViz';
 import { formatNetworkLabel, getDarkRuntimeConfig } from '../utils/runtime';
 
-type WalletTab = 'shield' | 'unshield' | 'transfer' | 'paper';
+type WalletTab = 'shield' | 'unshield' | 'transfer' | 'paper' | 'helius';
 
 const tabs: Array<{ id: WalletTab; label: string; tone: string }> = [
   { id: 'shield', label: 'Shield', tone: 'from-purple-600 to-indigo-600' },
   { id: 'unshield', label: 'Unshield', tone: 'from-emerald-600 to-teal-600' },
   { id: 'transfer', label: 'Private Transfer', tone: 'from-pink-600 to-rose-600' },
   { id: 'paper', label: 'Paper Wallet', tone: 'from-cyan-600 to-emerald-600' },
+  { id: 'helius', label: '🔭 HeliusViz', tone: 'from-cyan-500 to-blue-600' },
 ];
 
 const Dashboard: React.FC = () => {
@@ -122,7 +124,11 @@ const Dashboard: React.FC = () => {
         </div>
       </section>
 
-      {!connected && activeTab !== 'paper' ? (
+      {activeTab === 'helius' ? (
+        <section>
+          <HeliusViz />
+        </section>
+      ) : !connected && activeTab !== 'paper' ? (
         <section className="card text-center py-14">
           <h2 className={`text-3xl font-bold mb-4 bg-gradient-to-r ${activeTone} bg-clip-text text-transparent`}>
             Connect a Solana wallet
