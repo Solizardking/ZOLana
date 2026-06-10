@@ -7,8 +7,8 @@
  * Compatible with the Rust implementation in: programs/dark-protocol/src/crypto/sapling.rs
  */
 
-import { blake3 } from '@noble/hashes/blake3';
-import { sha256 } from '@noble/hashes/sha256';
+import { blake3 } from '@noble/hashes/blake3.js';
+import { sha256 } from '@noble/hashes/sha256.js';
 
 /** Sapling diversifier size (11 bytes, same as Zcash) */
 export const SAPLING_DIVERSIFIER_SIZE = 11;

@@ -1,13 +1,17 @@
 import { Connection, PublicKey, Transaction, Keypair } from '@solana/web3.js';
 import { AnchorProvider, Program, Idl } from '@coral-xyz/anchor';
-import { createHelius } from 'helius-sdk/rpc';
-import { createSmartTransaction } from 'helius-sdk/transactions';
+import { createHelius } from 'helius-sdk';
 import type { DarkProtocol } from './types/dark_protocol';
+import { createDarkProtocolConfigFromEnv, resolveHeliusRpcUrl, type DarkProtocolCluster } from './config';
 
 export interface DarkProtocolConfig {
-  heliusApiKey: string;
+  heliusApiKey?: string;
   jupiterApiKey?: string;
   redpillApiKey?: string;
+  xaiApiKey?: string;
+  xaiBaseUrl?: string;
+  xaiModel?: string;
+  cluster?: DarkProtocolCluster;
   rpcUrl?: string;
   programId?: PublicKey;
   commitment?: 'processed' | 'confirmed' | 'finalized';
@@ -35,11 +39,17 @@ export class DarkProtocolClient {
    * Create a new Dark Protocol client
    */
   static async create(config: DarkProtocolConfig): Promise<DarkProtocolClient> {
-    const rpcUrl = config.rpcUrl || `https://mainnet.helius-rpc.com/?api-key=${config.heliusApiKey}`;
+    const rpcUrl = config.rpcUrl || resolveHeliusRpcUrl({
+      cluster: config.cluster ?? 'mainnet-beta',
+      heliusApiKey: config.heliusApiKey,
+    });
     const connection = new Connection(rpcUrl, config.commitment || 'confirmed');
     
     // Create Helius client
-    const helius = createHelius(config.heliusApiKey);
+    const helius = createHelius({
+      apiKey: config.heliusApiKey ?? '',
+      network: config.cluster === 'mainnet-beta' ? 'mainnet-beta' : 'devnet',
+    });
     
     // Load program IDL and create Anchor program
     const programId = config.programId || new PublicKey('DARKxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXx');
@@ -49,9 +59,16 @@ export class DarkProtocolClient {
     
     // Load IDL (in production, fetch from chain or bundle)
     const idl = await DarkProtocolClient.loadIdl();
-    const program = new Program<DarkProtocol>(idl as any, programId, provider);
+    const program = new (Program as any)(idl, programId, provider) as Program<DarkProtocol>;
     
     return new DarkProtocolClient(connection, program, helius, config);
+  }
+
+  /**
+   * Create a client using HELIUS_RPC_URL / HELIUS_API_KEY / SOLANA_CLUSTER.
+   */
+  static async fromEnv(overrides: Partial<DarkProtocolConfig> = {}): Promise<DarkProtocolClient> {
+    return DarkProtocolClient.create(createDarkProtocolConfigFromEnv(overrides));
   }
 
   /**
@@ -94,14 +111,22 @@ export class DarkProtocolClient {
     signers: Keypair[];
     feePayer?: PublicKey;
   }) {
-    return await createSmartTransaction({
-      instructions: params.instructions,
-      signers: params.signers.map(kp => ({
-        address: kp.publicKey.toBase58() as any,
-        sign: async (msg: Uint8Array) => kp.sign(msg)
-      }) as any),
-      feePayer: params.feePayer?.toBase58() as any
-    });
+    const transaction = new Transaction();
+    transaction.add(...params.instructions);
+    transaction.feePayer = params.feePayer ?? params.signers[0]?.publicKey;
+
+    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash(this.config.commitment ?? 'confirmed');
+    transaction.recentBlockhash = blockhash;
+    if (params.signers.length > 0) {
+      transaction.partialSign(...params.signers);
+    }
+
+    return {
+      transaction,
+      blockhash,
+      lastValidBlockHeight,
+      provider: this.config.heliusApiKey ? 'helius-rpc' : 'solana-rpc',
+    };
   }
 
   /**

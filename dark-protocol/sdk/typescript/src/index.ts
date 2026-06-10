@@ -6,6 +6,9 @@
 export * from './client';
 export * from './types';
 export * from './jupiter-swap';
+export * from './config';
+export * from './ai-agent';
+export * from './private-payment';
 
 // Re-export commonly used Solana types
 export { 

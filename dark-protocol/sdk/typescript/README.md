@@ -26,12 +26,8 @@ pnpm add @dark-protocol/sdk
 ```typescript
 import { DarkProtocolClient, JupiterSwapClient } from '@dark-protocol/sdk';
 
-// Initialize client
-const client = await DarkProtocolClient.create({
-  heliusApiKey: process.env.HELIUS_API_KEY!,
-  jupiterApiKey: process.env.JUPITER_API_KEY,
-  commitment: 'confirmed',
-});
+// Reads HELIUS_RPC_URL / HELIUS_API_KEY / SOLANA_CLUSTER.
+const client = await DarkProtocolClient.fromEnv();
 
 // Initialize Jupiter swap client
 const jupiterClient = new JupiterSwapClient(client, process.env.JUPITER_API_KEY);
@@ -46,6 +42,70 @@ const quote = await jupiterClient.getQuote({
 
 console.log(`Expected output: ${quote.outputAmount} USDC`);
 ```
+
+## Runtime Environment
+
+```bash
+HELIUS_RPC_URL=
+HELIUS_API_KEY=
+SOLANA_RPC_URL=
+SOLANA_CLUSTER=devnet        # or mainnet-beta
+DARK_PROTOCOL_PROGRAM_ID=
+JUPITER_API_KEY=
+XAI_API_KEY=
+XAI_BASE_URL=
+XAI_MODEL=
+```
+
+`HELIUS_RPC_URL` wins when present. Otherwise the SDK builds a devnet or
+mainnet-beta Helius endpoint from `HELIUS_API_KEY`. Without Helius config, it
+falls back to the public Solana RPC endpoint for the selected cluster.
+
+## Dark Clawd Agent
+
+```typescript
+import { AIAgentManager, DarkProtocolClient } from '@dark-protocol/sdk';
+
+const client = await DarkProtocolClient.fromEnv();
+const agent = new AIAgentManager(client);
+
+const review = await agent.reviewPaperWallet({
+  label: 'ZOLana cold wallet',
+  network: 'devnet',
+  publicKey: '...',
+  paymentRail: 'x402',
+  settlement: 'solana',
+  proofLayer: 'evm',
+  durableReceipt: true,
+});
+
+console.log(review);
+```
+
+The xAI path uses `XAI_API_KEY` and only reviews public metadata. Secret key
+JSON and Sapling/Solana spend material must stay out of prompts.
+
+## Private Payment Primitive
+
+```typescript
+import { createPrivatePaymentReceipt } from '@dark-protocol/sdk';
+
+const receipt = createPrivatePaymentReceipt({
+  amountLamports: 250_000_000n,
+  recipient: 'zsol1...',
+  rail: 'x402',
+  settlement: 'solana',
+  proofLayer: 'evm',
+  durableReceipt: true,
+  memo: 'private settlement',
+});
+
+console.log(receipt.commitmentHex);
+```
+
+This is the SDK-level receipt primitive for durable, non-ephemeral private
+payments over `x402`, `AP2`, and `M2M`. It is staged until the live Dark
+Protocol program IDL wires settlement and proof verification on-chain.
 
 ## Private Swaps with ZK Proofs
 
@@ -116,9 +176,11 @@ class DarkProtocolClient {
 
 ```typescript
 interface DarkProtocolConfig {
-  heliusApiKey: string;          // Helius API key (required)
+  heliusApiKey?: string;         // Helius API key
   jupiterApiKey?: string;        // Jupiter API key (optional)
   redpillApiKey?: string;        // Redpill API key (optional)
+  xaiApiKey?: string;            // xAI key for Dark Clawd sidecar
+  cluster?: 'devnet' | 'mainnet-beta';
   rpcUrl?: string;               // Custom RPC URL (optional)
   programId?: PublicKey;         // Program ID (optional)
   commitment?: 'processed' | 'confirmed' | 'finalized';

@@ -62,6 +62,14 @@ export interface PrivateTransferParams {
   encryptedMemo: Uint8Array;
 }
 
+export interface PrivatePaymentParams {
+  rail: 'x402' | 'ap2' | 'm2m';
+  settlement: 'solana' | 'evm';
+  proofLayer: 'solana' | 'evm';
+  durableReceipt: boolean;
+  paymentCommitment: Uint8Array;
+}
+
 export interface PrivateSwapParams {
   inputAmount: bigint;
   inputCommitment: Uint8Array;
@@ -75,6 +83,7 @@ export enum TransactionType {
   Shield = 'Shield',
   Unshield = 'Unshield',
   PrivateTransfer = 'PrivateTransfer',
+  PrivatePayment = 'PrivatePayment',
   PrivateSwap = 'PrivateSwap',
   PoolDeposit = 'PoolDeposit',
   PoolWithdraw = 'PoolWithdraw',

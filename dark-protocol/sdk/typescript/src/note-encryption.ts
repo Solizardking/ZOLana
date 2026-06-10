@@ -5,9 +5,9 @@
  * Compatible with: programs/dark-protocol/src/crypto/note_encryption.rs
  */
 
-import { blake3 } from '@noble/hashes/blake3';
-import { sha256 } from '@noble/hashes/sha256';
-import { chacha20poly1305 } from '@noble/ciphers/chacha';
+import { blake3 } from '@noble/hashes/blake3.js';
+import { sha256 } from '@noble/hashes/sha256.js';
+import { chacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { SaplingPaymentAddress, SaplingIncomingViewingKey } from './sapling';
 
 /** Authentication bytes for encrypted data */
