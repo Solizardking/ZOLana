@@ -40,8 +40,11 @@ The wallet includes a typed staging primitive for:
 
 Each staged receipt records amount, lamports, recipient, rail, Solana/EVM
 settlement preference, proof layer, durable receipt flag, nonce, and a local
-commitment. Durable receipts are stored in browser localStorage and can be
-exported as JSON proof payloads for later EVM anchoring or verifier work.
+commitment. Durable receipts are stored in browser localStorage. After a
+connected wallet anchors a receipt, the same record stores Solana signature,
+cluster, explorer URL, confirmation commitment, and status. Receipts can also
+be exported as JSON proof payloads with an EIP-712-style EVM intent proof for
+later anchoring or verifier work.
 
 This is a wallet-side primitive for the Dark Protocol path; it is not yet final
 on-chain settlement or a deployed verifier contract.
@@ -51,9 +54,10 @@ on-chain settlement or a deployed verifier contract.
 Shield, unshield, private transfer, and private-payment receipts now produce
 wallet-signed Solana transactions using the Memo program. The payload contains a
 ZOLana Dark intent envelope with action, amount in lamports, commitment, and
-hashed memo metadata. The connected wallet pays the normal transaction fee and
-the configured RPC path (`HELIUS_RPC_URL`, `HELIUS_API_KEY`, or
-`SOLANA_RPC_URL`) submits it on devnet or mainnet-beta.
+hashed memo metadata. Private-payment anchors additionally persist the Solana
+signature back into the non-ephemeral receipt. The connected wallet pays the
+normal transaction fee and the configured RPC path (`HELIUS_RPC_URL`,
+`HELIUS_API_KEY`, or `SOLANA_RPC_URL`) submits it on devnet or mainnet-beta.
 
 No SOL is transferred into a placeholder custody account by these intent
 transactions. They are durable SVM anchors for the privacy workflow while the

@@ -93,7 +93,12 @@ JSON and Sapling/Solana spend material must stay out of prompts.
 ## Private Payment Primitive
 
 ```typescript
-import { createPrivatePaymentReceipt } from '@dark-protocol/sdk';
+import {
+  createPrivatePaymentEvmIntentProof,
+  createPrivatePaymentProofPayload,
+  createPrivatePaymentReceipt,
+  markPrivatePaymentAnchored,
+} from '@dark-protocol/sdk';
 
 const receipt = createPrivatePaymentReceipt({
   amountLamports: 250_000_000n,
@@ -105,12 +110,23 @@ const receipt = createPrivatePaymentReceipt({
   memo: 'private settlement',
 });
 
-console.log(receipt.commitmentHex);
+const anchored = markPrivatePaymentAnchored(receipt, {
+  signature: 'SOLANA_SIGNATURE',
+  cluster: 'devnet',
+});
+
+const evmIntent = createPrivatePaymentEvmIntentProof(anchored);
+const exportable = createPrivatePaymentProofPayload(anchored);
+
+console.log(anchored.commitmentHex, evmIntent.digest, exportable.status);
 ```
 
 This is the SDK-level receipt primitive for durable, non-ephemeral private
-payments over `x402`, `AP2`, and `M2M`. It is staged until the live Dark
-Protocol program IDL wires settlement and proof verification on-chain.
+payments over `x402`, `AP2`, and `M2M`. Solana anchoring records a signed Memo
+intent transaction against the same receipt. The EVM payload is an intent proof
+shape for later verifier or contract anchoring; it is not live EVM settlement by
+itself. The final Dark Protocol program IDL still needs settlement and proof
+verification wired on-chain.
 
 ## Private Swaps with ZK Proofs
 

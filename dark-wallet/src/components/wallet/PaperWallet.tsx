@@ -16,8 +16,11 @@ import {
   appendPrivatePaymentReceipt,
   createPrivatePaymentProofPayload,
   loadPrivatePaymentReceipts,
+  markPrivatePaymentAnchored,
+  markPrivatePaymentFailed,
   serializePrivatePaymentProofPayload,
   stagePrivatePayment,
+  updatePrivatePaymentReceipt,
   type PrivatePaymentProofLayer,
   type PrivatePaymentRail,
   type PrivatePaymentReceipt,
@@ -179,8 +182,20 @@ const PaperWallet: React.FC = () => {
     try {
       const darkClient = createDarkProtocolClient(connection, wallet);
       const signature = await darkClient.anchorPrivatePayment(receipt);
+      const anchoredReceipt = markPrivatePaymentAnchored(receipt, {
+        signature,
+        cluster: runtime.defaultNetwork,
+        commitment: 'confirmed',
+      });
+      const receipts = updatePrivatePaymentReceipt(anchoredReceipt);
+      setPaymentReceipts(receipts);
+      setLastPayment((current) => current?.id === receipt.id ? anchoredReceipt : current);
       setStatus(`Anchored ${receipt.id} on Solana: ${signature.slice(0, 20)}...`);
     } catch (error: any) {
+      const failedReceipt = markPrivatePaymentFailed(receipt, error.message);
+      const receipts = updatePrivatePaymentReceipt(failedReceipt);
+      setPaymentReceipts(receipts);
+      setLastPayment((current) => current?.id === receipt.id ? failedReceipt : current);
       setStatus(`Payment anchor error: ${error.message}`);
     } finally {
       setAnchoringReceiptId(null);
@@ -336,6 +351,15 @@ const PaperWallet: React.FC = () => {
                       <p className="text-xs text-gray-500">
                         {receipt.rail.toUpperCase()} / {receipt.settlement.toUpperCase()} settlement / {receipt.proofLayer.toUpperCase()} proof
                       </p>
+                      <p className={`mt-1 text-xs ${
+                        receipt.status === 'anchored'
+                          ? 'text-emerald-300'
+                          : receipt.status === 'failed'
+                            ? 'text-red-300'
+                            : 'text-amber-300'
+                      }`}>
+                        {receipt.status.toUpperCase()}
+                      </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button className="btn-secondary text-xs" onClick={() => handleExportPaymentProof(receipt)}>
@@ -344,13 +368,30 @@ const PaperWallet: React.FC = () => {
                       <button
                         className="btn-primary text-xs"
                         onClick={() => handleAnchorPaymentReceipt(receipt)}
-                        disabled={!publicKey || anchoringReceiptId === receipt.id}
+                        disabled={!publicKey || anchoringReceiptId === receipt.id || receipt.status === 'anchored'}
                       >
-                        {anchoringReceiptId === receipt.id ? 'Anchoring...' : 'Anchor on Solana'}
+                        {receipt.status === 'anchored'
+                          ? 'Anchored'
+                          : anchoringReceiptId === receipt.id
+                            ? 'Anchoring...'
+                            : 'Anchor on Solana'}
                       </button>
                     </div>
                   </div>
                   <p className="mt-2 font-mono text-xs text-gray-400 break-all">{receipt.commitmentHex}</p>
+                  {receipt.solanaAnchor && (
+                    <a
+                      className="mt-2 inline-block text-xs text-cyan-300 hover:text-cyan-200"
+                      href={receipt.solanaAnchor.explorerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Solana anchor: {receipt.solanaAnchor.signature.slice(0, 20)}...
+                    </a>
+                  )}
+                  {receipt.lastError && (
+                    <p className="mt-2 text-xs text-red-300">{receipt.lastError}</p>
+                  )}
                 </div>
               ))}
             </div>
