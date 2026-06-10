@@ -1,0 +1,34 @@
+[package]
+name = "shielded-wallet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "shielded_wallet"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+solana-program.workspace = true
+curve25519-dalek.workspace = true
+sha2.workspace = true
+sha3.workspace = true
+blake3.workspace = true
+borsh.workspace = true
+ark-ff.workspace = true
+ark-ec.workspace = true
+ark-serialize.workspace = true
+ark-std.workspace = true
+thiserror.workspace = true
+
+# Reference the main dark-protocol for shared crypto
+dark-protocol = { path = "../dark-protocol", features = ["cpi"] }

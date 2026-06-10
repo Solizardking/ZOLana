@@ -1,0 +1,2 @@
+#define APP_VERSION "0.5"
+#define APP_BUILD_DATE "2019-06-28"

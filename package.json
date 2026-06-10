@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "x402-express": "^0.7.1"
+  }
+}

@@ -1,0 +1,329 @@
+# Dark Protocol TypeScript SDK
+
+Privacy-first DeFi protocol on Solana with AI agents and Jupiter integration.
+
+## Features
+
+- 🔒 **Private Swaps**: Execute swaps with zero-knowledge proofs hiding transaction details
+- 🌊 **Jupiter Integration**: Best swap routes across all Solana DEXs
+- 📈 **Perpetuals Trading**: Private leveraged positions via Jupiter Perpetuals
+- ⚡ **Helius Infrastructure**: Optimized RPC and smart transactions
+- 🤖 **AI Agent Support**: TEE-verified autonomous trading
+- 🛡️ **Groth16 ZK-SNARKs**: 256-byte proofs for maximum privacy
+
+## Installation
+
+```bash
+npm install @dark-protocol/sdk
+# or
+yarn add @dark-protocol/sdk
+# or
+pnpm add @dark-protocol/sdk
+```
+
+## Quick Start
+
+```typescript
+import { DarkProtocolClient, JupiterSwapClient } from '@dark-protocol/sdk';
+
+// Initialize client
+const client = await DarkProtocolClient.create({
+  heliusApiKey: process.env.HELIUS_API_KEY!,
+  jupiterApiKey: process.env.JUPITER_API_KEY,
+  commitment: 'confirmed',
+});
+
+// Initialize Jupiter swap client
+const jupiterClient = new JupiterSwapClient(client, process.env.JUPITER_API_KEY);
+
+// Get swap quote
+const quote = await jupiterClient.getQuote({
+  inputMint: 'So11111111111111111111111111111111111111112', // SOL
+  outputMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+  amount: '1000000000', // 1 SOL
+  slippageBps: 50, // 0.5%
+});
+
+console.log(`Expected output: ${quote.outputAmount} USDC`);
+```
+
+## Private Swaps with ZK Proofs
+
+```typescript
+import { PublicKey } from '@solana/web3.js';
+
+// Execute private swap
+const signature = await jupiterClient.executePrivateSwap(
+  new PublicKey('So11111111111111111111111111111111111111112'), // Input: SOL
+  new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'), // Output: USDC
+  BigInt(1_000_000_000), // 1 SOL
+  {
+    inputCommitment: commitment,
+    outputCommitment: newCommitment,
+    nullifier: nullifier,
+    proof: zkProof,
+    slippageBps: 50,
+    priorityFee: 1000,
+  }
+);
+
+console.log('Private swap completed:', signature);
+```
+
+## Jupiter Perpetuals
+
+```typescript
+import { JupiterPerpetualsClient } from '@dark-protocol/sdk';
+
+const perpsClient = new JupiterPerpetualsClient(client);
+
+// Get JLP pool state
+const poolState = await perpsClient.getPoolState();
+
+// Get custody state
+const solCustody = await perpsClient.getCustodyState('SOL');
+
+// Open long position
+const positionSignature = await perpsClient.openPosition({
+  token: 'SOL',
+  collateralToken: 'USDC',
+  sizeUsd: BigInt(1000_000_000), // $1000
+  collateralUsd: BigInt(200_000_000), // $200
+  side: 'long',
+  leverage: 5,
+  slippageBps: 50,
+  proof: zkProof,
+});
+```
+
+## API Reference
+
+### DarkProtocolClient
+
+Main client for interacting with Dark Protocol.
+
+```typescript
+class DarkProtocolClient {
+  static async create(config: DarkProtocolConfig): Promise<DarkProtocolClient>
+  async getProtocolState(): Promise<ProtocolState>
+  async getMerkleTree(): Promise<MerkleTree>
+  async getShieldedAddress(owner: PublicKey): Promise<ShieldedAddress>
+  async getAIAgent(agentPubkey: PublicKey): Promise<AIAgent>
+}
+```
+
+#### Configuration
+
+```typescript
+interface DarkProtocolConfig {
+  heliusApiKey: string;          // Helius API key (required)
+  jupiterApiKey?: string;        // Jupiter API key (optional)
+  redpillApiKey?: string;        // Redpill API key (optional)
+  rpcUrl?: string;               // Custom RPC URL (optional)
+  programId?: PublicKey;         // Program ID (optional)
+  commitment?: 'processed' | 'confirmed' | 'finalized';
+}
+```
+
+### JupiterSwapClient
+
+Client for executing private swaps via Jupiter.
+
+```typescript
+class JupiterSwapClient {
+  constructor(darkClient: DarkProtocolClient, apiKey?: string)
+  
+  async getQuote(params: JupiterQuoteParams): Promise<JupiterSwapRoute>
+  async getQuoteWithAlternatives(params: JupiterQuoteParams, limit?: number): Promise<JupiterSwapRoute[]>
+  async executePrivateSwap(
+    inputMint: PublicKey,
+    outputMint: PublicKey,
+    amount: bigint,
+    options: PrivateSwapOptions
+  ): Promise<string>
+  async getTokenPrice(mint: string): Promise<number>
+  async estimatePriceImpact(inputMint: string, outputMint: string, amount: bigint): Promise<number>
+  async findBestRoute(
+    inputMint: string,
+    outputMint: string,
+    amount: bigint,
+    options?: RouteOptions
+  ): Promise<JupiterSwapRoute | null>
+}
+```
+
+#### Quote Parameters
+
+```typescript
+interface JupiterQuoteParams {
+  inputMint: string;             // Input token mint address
+  outputMint: string;            // Output token mint address
+  amount: string;                // Amount in atomic units
+  slippageBps?: number;          // Slippage in basis points (default: 50)
+  onlyDirectRoutes?: boolean;    // Only direct routes (default: false)
+  maxAccounts?: number;          // Max accounts (default: 64)
+  platformFeeBps?: number;       // Platform fee in bps
+}
+```
+
+#### Private Swap Options
+
+```typescript
+interface PrivateSwapOptions {
+  inputCommitment: Uint8Array;   // Input note commitment (32 bytes)
+  outputCommitment: Uint8Array;  // Output note commitment (32 bytes)
+  nullifier: Uint8Array;         // Nullifier to prevent double-spend (32 bytes)
+  proof: ZKProof;                // Groth16 zero-knowledge proof
+  slippageBps?: number;          // Slippage tolerance (default: 50)
+  priorityFee?: number;          // Priority fee in micro-lamports
+}
+```
+
+#### ZK Proof Structure
+
+```typescript
+interface ZKProof {
+  proofA: Uint8Array;  // 64 bytes
+  proofB: Uint8Array;  // 128 bytes
+  proofC: Uint8Array;  // 64 bytes
+}
+```
+
+### JupiterPerpetualsClient
+
+Client for private perpetual trading.
+
+```typescript
+class JupiterPerpetualsClient {
+  constructor(darkClient: DarkProtocolClient)
+  
+  async getPoolState(): Promise<PoolState>
+  async getCustodyState(token: 'SOL' | 'ETH' | 'BTC' | 'USDC' | 'USDT'): Promise<CustodyState>
+  async openPosition(params: OpenPositionParams): Promise<string>
+  async closePosition(params: ClosePositionParams): Promise<string>
+  async getPositionPnL(positionKey: PublicKey): Promise<{ unrealizedPnL: bigint; realizedPnL: bigint }>
+  async getLiquidationPrice(positionKey: PublicKey): Promise<number>
+}
+```
+
+## Examples
+
+See the [examples](./examples) directory for complete working examples:
+
+- **dark-swap-example.ts**: Comprehensive Jupiter swap integration demo
+- Get swap quotes
+- Execute private swaps
+- Get token prices
+- Find best routes
+- Jupiter Perpetuals integration
+
+Run examples:
+
+```bash
+# Set environment variables
+export HELIUS_API_KEY="your-helius-api-key"
+export JUPITER_API_KEY="your-jupiter-api-key"
+
+# Run example
+npx ts-node examples/dark-swap-example.ts
+```
+
+## Token Addresses (Mainnet)
+
+```typescript
+const TOKENS = {
+  SOL: 'So11111111111111111111111111111111111111112',
+  USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+  BTC: '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh',
+  ETH: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs',
+};
+```
+
+## JLP Pool & Custody Accounts
+
+```typescript
+const JLP_POOL = '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq';
+
+const CUSTODY_ACCOUNTS = {
+  SOL: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  ETH: 'AQCGyheWPLeo6Qp9WpYS9m3Qj479t7R636N9ey1rEjEn',
+  BTC: '5Pv3gM9JrFFH883SWAhvJC9RPYmo8UNxuFtv5bMMALkm',
+  USDC: 'G18jKKXQwBbrHeiK3C9MRXhkHsLHf7XgCSisykV46EZa',
+  USDT: '4vkNeXiYEUizLdrpdPS1eC2mccyM4NUPRtERrk6ZETkk',
+};
+```
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Run tests
+npm test
+
+# Lint
+npm run lint
+
+# Format
+npm run format
+```
+
+## Architecture
+
+### Privacy Layer
+- **Groth16 ZK-SNARKs**: Zero-knowledge proofs for transaction privacy
+- **Commitment Scheme**: Hide transaction amounts and recipients
+- **Nullifier System**: Prevent double-spending
+- **Merkle Tree**: Track note commitments on-chain
+
+### Jupiter Integration
+- **V6 Aggregator**: Best swap routes across all DEXs
+- **Perpetuals**: Private leveraged trading via JLP pool
+- **5 Custody Accounts**: SOL, ETH, BTC, USDC, USDT
+- **Single Pool Design**: Simplified liquidity management
+
+### Helius Infrastructure
+- **Optimized RPC**: High-performance Solana access
+- **Smart Transactions**: Automatic optimization
+- **Enhanced APIs**: DAS, webhooks, compression
+
+## Security
+
+- ⚠️ **Pre-Audit**: This SDK is in development. DO NOT use with real funds.
+- 🔐 **ZK Proofs**: All private operations require valid Groth16 proofs
+- 🛡️ **TEE Attestation**: AI agents must provide Intel SGX/AMD SEV attestation
+- 📝 **Security Audits**: Trail of Bits, Zellic, OtterSec scheduled
+
+## Roadmap
+
+- [x] Core SDK implementation
+- [x] Jupiter V6 integration
+- [x] Jupiter Perpetuals support
+- [ ] ZK proof generation library
+- [ ] AI agent SDK
+- [ ] React hooks package
+- [ ] Mobile SDK (React Native)
+- [ ] Security audits
+- [ ] Mainnet launch
+
+## Resources
+
+- [Documentation](https://docs.darkprotocol.xyz)
+- [GitHub](https://github.com/darkprotocol/dark-protocol)
+- [Discord](https://discord.gg/darkprotocol)
+- [Twitter](https://twitter.com/darkprotocol)
+
+## License
+
+Apache-2.0
+
+## Support
+
+- Discord: https://discord.gg/darkprotocol
+- Email: dev@darkprotocol.xyz
+- GitHub Issues: https://github.com/darkprotocol/dark-protocol/issues

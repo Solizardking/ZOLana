@@ -1,0 +1,5 @@
+Building mertcash
+
+See the mertcash documentation wiki (https://mertcash.readthedocs.io/en/latest/rtd_pages/mertcashd.html) for instructions on building mertcashd,
+the intended-for-services, no-graphical-interface, reference
+implementation of mertcash.

@@ -1,0 +1,56 @@
+[workspace]
+members = [
+    "programs/dark-protocol",
+    # "programs/shielded-wallet",  # Disabled temporarily for initial build
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/dark-protocol/dark-protocol"
+
+[workspace.dependencies]
+# Solana
+anchor-lang = "0.30.0"
+anchor-spl = "0.30.0"
+solana-program = "~1.18"
+solana-sdk = "~1.18"
+spl-token = "4.0"
+spl-associated-token-account = "2.3"
+
+# Jupiter
+jupiter-amm-interface = { path = "../jupiter-amm-implementation-main/program-interfaces" }
+jupiter-core = { path = "../jupiter-amm-implementation-main/jupiter-core" }
+
+# Cryptography
+curve25519-dalek = "4.1"
+sha2 = "0.10"
+sha3 = "0.10"
+blake3 = "1.5"
+borsh = "1.0"
+
+# ZK Proofs
+ark-ff = "0.4"
+ark-ec = "0.4"
+ark-serialize = "0.4"
+ark-std = "0.4"
+
+# Utils
+thiserror = "1.0"
+hex = "0.4"
+bs58 = "0.5"
+base64 = "0.21"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1
