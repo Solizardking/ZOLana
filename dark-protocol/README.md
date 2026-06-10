@@ -40,6 +40,16 @@ Dark Protocol is a comprehensive privacy framework for Solana that brings Zcash-
   verified Solana Memo signature and cluster.
 - **Foundry tests**: Run `forge test` from `dark-protocol/evm-verifier`.
 
+### Rail Worker
+- **Executable handoff**: `rail-worker` validates exported x402/AP2/M2M rail
+  authorization envelopes.
+- **Replay and expiry checks**: The worker consumes replay keys once per
+  process and rejects expired envelopes.
+- **Intent-only settlement**: The response explicitly reports `settled: false`
+  until a live x402 facilitator, AP2 mandate runner, or M2M backend is
+  configured.
+- **Node tests**: Run `npm test` from `dark-protocol/rail-worker`.
+
 ## Architecture
 
 ```

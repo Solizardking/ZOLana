@@ -46,6 +46,9 @@ What is now wired:
    staging for `x402`, `AP2`, and `M2M`, with explicit Solana/EVM settlement,
    lamport-denominated receipts, local commitments, Solana anchor metadata, and
    exportable EIP-712-style EVM intent proof payloads.
+5. `dark-wallet/src/sdk/rail-authorization.ts` adds x402/AP2/M2M authorization
+   envelopes with expiry, replay key, Solana anchor binding, verified slot, and
+   EVM digest binding for agent/facilitator handoff.
 
 How the last-November Zcash-to-Solana port works:
 
@@ -64,9 +67,10 @@ How the last-November Zcash-to-Solana port works:
    can re-fetch that transaction and verify the Memo payload still matches the
    receipt fields before exporting EVM proof intent. The wallet also recomputes
    and checks the EVM intent proof digest against the receipt, configured EVM
-   chain, and optional verifier address. The EVM proof export is an intent
-   payload for later verifier or contract anchoring, not yet a deployed on-chain
-   verifier or final privacy settlement.
+   chain, and optional verifier address. It can also export a rail
+   authorization envelope for x402/AP2/M2M workers. The EVM proof export is an
+   intent payload for later verifier or contract anchoring, not yet final
+   privacy settlement.
 
 Relevant env:
 
@@ -88,6 +92,8 @@ XAI_MODEL=
 |-----------|---------|
 | [`src/`](./src/README.md) | Zcash full-node daemon, consensus, networking, wallet, RPC, and the privacy core |
 | [`dark-protocol/`](./dark-protocol/README.md) | Solana privacy programs, ZK proofs, shield/unshield flows, private swaps, and AI-agent hooks |
+| [`dark-protocol/rail-worker/`](./dark-protocol/rail-worker/README.md) | Executable intent-mode x402/AP2/M2M rail authorization worker |
+| [`dark-protocol/evm-verifier/`](./dark-protocol/evm-verifier/README.md) | EVM consume-once verifier for private-payment intent proofs |
 | [`dark-wallet/`](./dark-wallet/README.md) | Browser-based privacy wallet with shielded balances, private transfers, and swap UX |
 | [`darkswap/`](./darkswap/README.md) | Jupiter routing examples and swap execution references |
 | [`paper/`](./paper/README.md) | Offline paper-wallet generator and air-gapped cold-storage tooling |

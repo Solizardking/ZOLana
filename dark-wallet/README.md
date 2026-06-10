@@ -54,6 +54,21 @@ digest from the receipt, Solana anchor metadata, `EVM_CHAIN_ID`, and optional
 `EVM_PRIVATE_PAYMENT_VERIFIER`. This proves the payload is internally
 consistent before it is handed to an EVM verifier or relayer.
 
+Rail authorization exports for `x402`, `AP2`, and `M2M` can be checked the same
+way. The wallet recomputes the expected authorization id, replay key, EVM intent
+digest, Solana anchor signature, and rail-specific constraints before the file
+is passed to a payment server, agent, or machine-to-machine session.
+
+`Export Rail Auth` emits a protocol-shaped authorization envelope for the
+selected rail:
+
+- `x402` - HTTP 402-style payment-required envelope with `PAYMENT-REQUIRED`
+  and `PAYMENT-SIGNATURE` header names.
+- `AP2` - Dark Clawd mandate envelope with amount, recipient, expiry, nonce,
+  Solana Memo verification requirement, and EVM proof requirement.
+- `M2M` - machine-session envelope with payer/payee, settlement window,
+  replay key, and binding digest.
+
 This is a wallet-side primitive for the Dark Protocol path; it is not yet final
 on-chain settlement or a deployed verifier contract.
 

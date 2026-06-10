@@ -140,6 +140,24 @@ This is the SDK-level receipt primitive for durable, non-ephemeral private
 payments over `x402`, `AP2`, and `M2M`. Solana anchoring records a signed Memo
 intent transaction against the same receipt. Verification fetches that
 transaction by signature and checks that the Memo payload matches the receipt.
+
+Rail authorization handoff:
+
+```typescript
+import { createRailAuthorizationEnvelope } from '@dark-protocol/sdk';
+
+const railAuth = createRailAuthorizationEnvelope(anchored, {
+  evmChainId: 1,
+  evmVerifyingContract: '0xVerifierContract',
+  resource: 'https://example.service/private-api',
+});
+```
+
+The rail authorization binds x402/AP2/M2M metadata to receipt nonce, replay key,
+Solana anchor signature, verified slot, and EVM intent digest. It is the object
+a facilitator, AP2 mandate runner, or machine-to-machine settlement worker can
+consume.
+
 The EVM payload is an intent proof shape for later verifier or contract
 anchoring. `dark-protocol/evm-verifier` contains a Foundry verifier contract
 that can consume the EIP-712 proof digest once. This is not live EVM settlement

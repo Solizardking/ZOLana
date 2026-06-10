@@ -1,0 +1,13 @@
+{
+  "name": "@zolana/dark-rail-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Intent-mode x402/AP2/M2M rail worker for ZOLana private-payment receipts",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "license": "Apache-2.0"
+}
+

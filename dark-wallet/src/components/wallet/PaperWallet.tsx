@@ -32,6 +32,7 @@ import {
 import {
   createRailAuthorizationEnvelope,
   serializeRailAuthorizationEnvelope,
+  verifyRailAuthorizationEnvelope,
 } from '../../sdk/rail-authorization';
 
 function downloadFile(filename: string, content: string): void {
@@ -81,6 +82,7 @@ const PaperWallet: React.FC = () => {
   const [anchoringReceiptId, setAnchoringReceiptId] = useState<string | null>(null);
   const [verifyingReceiptId, setVerifyingReceiptId] = useState<string | null>(null);
   const [checkingProofId, setCheckingProofId] = useState<string | null>(null);
+  const [checkingRailId, setCheckingRailId] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     setIsBusy(true);
@@ -218,6 +220,30 @@ const PaperWallet: React.FC = () => {
       setStatus(`Exported ${receipt.rail.toUpperCase()} rail authorization ${envelope.authorizationId}`);
     } catch (error: any) {
       setStatus(`Rail authorization error: ${error.message}`);
+    }
+  };
+
+  const handleCheckRailAuthorization = (receipt: PrivatePaymentReceipt) => {
+    setCheckingRailId(receipt.id);
+    try {
+      const options = {
+        evmChainId: runtime.evmChainId,
+        evmVerifyingContract: runtime.evmPrivatePaymentVerifier,
+        machinePayer: receipt.solanaAnchor?.payer ?? publicKey?.toBase58(),
+        machinePayee: receipt.recipient,
+      };
+      const envelope = createRailAuthorizationEnvelope(receipt, options);
+      const verification = verifyRailAuthorizationEnvelope(envelope, receipt, options);
+      if (!verification.ok) {
+        setStatus(`Rail authorization mismatch: ${verification.mismatches.join('; ')}`);
+        return;
+      }
+
+      setStatus(`Rail authorization verified: ${verification.actualAuthorizationId}`);
+    } catch (error: any) {
+      setStatus(`Rail authorization check error: ${error.message}`);
+    } finally {
+      setCheckingRailId(null);
     }
   };
 
@@ -470,6 +496,9 @@ const PaperWallet: React.FC = () => {
                       </button>
                       <button className="btn-secondary text-xs" onClick={() => handleExportRailAuthorization(receipt)}>
                         Export Rail Auth
+                      </button>
+                      <button className="btn-secondary text-xs" onClick={() => handleCheckRailAuthorization(receipt)} disabled={checkingRailId === receipt.id}>
+                        {checkingRailId === receipt.id ? 'Checking...' : 'Check Rail Auth'}
                       </button>
                       <button
                         className="btn-primary text-xs"
