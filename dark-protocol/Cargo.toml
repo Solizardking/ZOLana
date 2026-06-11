@@ -13,10 +13,10 @@ repository = "https://github.com/dark-protocol/dark-protocol"
 
 [workspace.dependencies]
 # Solana
-anchor-lang = "0.30.0"
-anchor-spl = "0.30.0"
-solana-program = "~1.18"
-solana-sdk = "~1.18"
+anchor-lang = "0.32.1"
+anchor-spl = "0.32.1"
+solana-program = "~2.3"
+solana-sdk = "~2.3"
 spl-token = "4.0"
 spl-associated-token-account = "2.3"
 
