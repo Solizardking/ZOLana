@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { createWorkerState, processRailRequest, stableHex, validateRailRequest } from '../src/worker.mjs';
 
 function authorizationId(envelope) {
@@ -175,6 +178,37 @@ test('valid x402 rail authorization is accepted and consumes replay key', async 
   assert.match(first.headers['PAYMENT-SIGNATURE'], /^rail_x402_/);
 
   const replay = await processRailRequest(fixture('x402'), state, { now: 1760000003000 });
+  assert.equal(replay.ok, false);
+  assert.equal(replay.status, 409);
+});
+
+test('file-backed rail store persists replay and sanitized settlement ledger across restarts', async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zolana-rail-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  const storePath = path.join(dir, 'ledger.json');
+  const request = fixture('x402');
+  const firstState = createWorkerState({ storePath });
+  const accepted = await processRailRequest(request, firstState, { now: 1760000002000 });
+
+  assert.equal(accepted.ok, true);
+  assert.equal(accepted.ledger.durable, true);
+  assert.equal(accepted.ledger.recorded, true);
+
+  const ledger = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+  assert.equal(Object.keys(ledger.replayKeys).length, 1);
+  assert.equal(ledger.settlements.length, 1);
+  assert.equal(ledger.settlements[0].authorizationId, accepted.authorizationId);
+  assert.equal(ledger.settlements[0].receiptId, accepted.receiptId);
+  assert.equal(ledger.settlements[0].settlementStatus, 'intent-only');
+  assert.equal(ledger.settlements[0].recipient, undefined);
+  assert.equal(ledger.settlements[0].amountLamports, undefined);
+
+  const restartedState = createWorkerState({ storePath });
+  assert.equal(restartedState.replayStore.getSettlement(accepted.authorizationId).receiptId, accepted.receiptId);
+  assert.equal(restartedState.replayStore.listSettlements()[0].authorizationId, accepted.authorizationId);
+
+  const replay = await processRailRequest(request, restartedState, { now: 1760000003000 });
   assert.equal(replay.ok, false);
   assert.equal(replay.status, 409);
 });

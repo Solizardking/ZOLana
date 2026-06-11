@@ -1,7 +1,14 @@
 import http from 'node:http';
-import { createSettlementConfig, createWorkerState, processRailRequest, responseBody } from './worker.mjs';
+import {
+  createSettlementConfig,
+  createWorkerState,
+  getRailSettlement,
+  listRailSettlements,
+  processRailRequest,
+  responseBody,
+} from './worker.mjs';
 
-const state = createWorkerState();
+const state = createWorkerState({ env: process.env });
 const port = Number.parseInt(process.env.RAIL_WORKER_PORT ?? '4020', 10);
 const settlementConfig = createSettlementConfig(process.env);
 
@@ -22,13 +29,40 @@ function readJson(req) {
 }
 
 const server = http.createServer(async (req, res) => {
-  if (req.method === 'GET' && req.url === '/health') {
+  const requestUrl = new URL(req.url ?? '/', 'http://127.0.0.1');
+
+  if (req.method === 'GET' && requestUrl.pathname === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: true, service: 'zolana-dark-rail-worker' }));
     return;
   }
 
-  if (req.method !== 'POST' || req.url !== '/rail/authorize') {
+  if (req.method === 'GET' && requestUrl.pathname === '/rail/settlements') {
+    const limit = Number.parseInt(requestUrl.searchParams.get('limit') ?? '50', 10);
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({
+      ok: true,
+      settlements: listRailSettlements(state, Number.isFinite(limit) ? limit : 50),
+    }, null, 2));
+    return;
+  }
+
+  const settlementMatch = requestUrl.pathname.match(/^\/rail\/settlements\/([^/]+)$/);
+  if (req.method === 'GET' && settlementMatch) {
+    const authorizationId = decodeURIComponent(settlementMatch[1]);
+    const settlement = getRailSettlement(state, authorizationId);
+    if (!settlement) {
+      res.writeHead(404, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'settlement not found' }));
+      return;
+    }
+
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, settlement }, null, 2));
+    return;
+  }
+
+  if (req.method !== 'POST' || requestUrl.pathname !== '/rail/authorize') {
     res.writeHead(404, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: false, error: 'not found' }));
     return;
@@ -43,7 +77,8 @@ const server = http.createServer(async (req, res) => {
     });
     res.end(responseBody(result));
   } catch (error) {
-    res.writeHead(400, { 'content-type': 'application/json' });
+    const status = error instanceof SyntaxError ? 400 : 500;
+    res.writeHead(status, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: false, error: error.message }));
   }
 });

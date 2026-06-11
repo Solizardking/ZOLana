@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const VALID_RAILS = new Set(['x402', 'ap2', 'm2m']);
 const KIND_BY_RAIL = {
@@ -8,7 +10,9 @@ const KIND_BY_RAIL = {
 };
 
 export class ReplayStore {
+  durable = false;
   #seen = new Map();
+  #settlements = new Map();
 
   has(key, now = Date.now()) {
     this.#sweep(now);
@@ -20,6 +24,28 @@ export class ReplayStore {
     this.#seen.set(key, expiresAt);
   }
 
+  consumeAndRecord(key, expiresAt, entry, now = Date.now()) {
+    this.#sweep(now);
+    this.#seen.set(key, expiresAt);
+    if (entry?.authorizationId) {
+      this.#settlements.set(entry.authorizationId, entry);
+    }
+
+    return {
+      durable: this.durable,
+      recorded: Boolean(entry?.authorizationId),
+      authorizationId: entry?.authorizationId,
+    };
+  }
+
+  getSettlement(authorizationId) {
+    return this.#settlements.get(authorizationId);
+  }
+
+  listSettlements(limit = 50) {
+    return Array.from(this.#settlements.values()).slice(-limit).reverse();
+  }
+
   #sweep(now) {
     for (const [key, expiresAt] of this.#seen.entries()) {
       if (expiresAt <= now) this.#seen.delete(key);
@@ -27,9 +53,116 @@ export class ReplayStore {
   }
 }
 
-export function createWorkerState() {
+function emptyLedger() {
   return {
-    replayStore: new ReplayStore(),
+    version: 1,
+    replayKeys: {},
+    settlements: [],
+  };
+}
+
+function normalizeLedger(value) {
+  const ledger = value && typeof value === 'object' ? value : {};
+  return {
+    version: 1,
+    replayKeys: ledger.replayKeys && typeof ledger.replayKeys === 'object' ? ledger.replayKeys : {},
+    settlements: Array.isArray(ledger.settlements) ? ledger.settlements : [],
+  };
+}
+
+export class FileRailStore {
+  durable = true;
+  #data;
+
+  constructor(filePath) {
+    if (!filePath) {
+      throw new Error('FileRailStore requires a ledger file path');
+    }
+
+    this.filePath = filePath;
+    this.#data = this.#read();
+    this.#persist();
+  }
+
+  has(key, now = Date.now()) {
+    this.#data = this.#read();
+    this.#sweep(now);
+    const present = Object.prototype.hasOwnProperty.call(this.#data.replayKeys, key);
+    this.#persist();
+    return present;
+  }
+
+  add(key, expiresAt, now = Date.now()) {
+    this.consumeAndRecord(key, expiresAt, undefined, now);
+  }
+
+  consumeAndRecord(key, expiresAt, entry, now = Date.now()) {
+    this.#data = this.#read();
+    this.#sweep(now);
+    this.#data.replayKeys[key] = {
+      expiresAt,
+      consumedAt: now,
+    };
+
+    if (entry?.authorizationId) {
+      this.#data.settlements = [
+        ...this.#data.settlements.filter(item => item.authorizationId !== entry.authorizationId),
+        entry,
+      ];
+    }
+
+    this.#persist();
+    return {
+      durable: true,
+      recorded: Boolean(entry?.authorizationId),
+      authorizationId: entry?.authorizationId,
+    };
+  }
+
+  getSettlement(authorizationId) {
+    this.#data = this.#read();
+    return this.#data.settlements.find(item => item.authorizationId === authorizationId);
+  }
+
+  listSettlements(limit = 50) {
+    this.#data = this.#read();
+    return this.#data.settlements.slice(-limit).reverse();
+  }
+
+  #read() {
+    if (!fs.existsSync(this.filePath)) {
+      return emptyLedger();
+    }
+
+    const raw = fs.readFileSync(this.filePath, 'utf8').trim();
+    if (!raw) {
+      return emptyLedger();
+    }
+
+    return normalizeLedger(JSON.parse(raw));
+  }
+
+  #persist() {
+    fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
+    const tempPath = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tempPath, `${JSON.stringify(this.#data, null, 2)}\n`);
+    fs.renameSync(tempPath, this.filePath);
+  }
+
+  #sweep(now) {
+    for (const [key, value] of Object.entries(this.#data.replayKeys)) {
+      if (value?.expiresAt <= now) {
+        delete this.#data.replayKeys[key];
+      }
+    }
+  }
+}
+
+export function createWorkerState(options = {}) {
+  const storePath = options.storePath ?? options.env?.RAIL_WORKER_STORE_PATH;
+
+  return {
+    replayStore: storePath ? new FileRailStore(storePath) : new ReplayStore(),
   };
 }
 
@@ -370,6 +503,61 @@ export async function callSettlementBackend(auth, proof, config, fetchImpl = glo
   };
 }
 
+function settlementLedgerEntry(auth, result, now) {
+  const settlement = result.settlement ?? {};
+  const evidenceDigest = settlement.evidence
+    ? stableDigest(JSON.stringify(settlement.evidence))
+    : undefined;
+
+  return {
+    version: 1,
+    authorizationId: auth.authorizationId,
+    receiptId: auth.receiptId,
+    rail: auth.rail,
+    mode: result.mode,
+    durableReceipt: auth.durableReceipt,
+    recordedAt: now,
+    expiresAt: auth.expiresAt,
+    responseStatus: result.status,
+    settlementStatus: settlement.status ?? (settlement.settled ? 'settled' : 'pending'),
+    settled: Boolean(settlement.settled),
+    settlementId: settlement.settlementId,
+    transactionId: settlement.transactionId,
+    backendUrl: settlement.backendUrl,
+    evidenceDigest,
+    solanaAnchorSignature: auth.solanaAnchorSignature,
+    solanaCluster: auth.solanaCluster,
+    solanaVerifiedSlot: auth.solanaVerifiedSlot,
+    evmIntentDigest: auth.evmIntentDigest,
+    evmChainId: auth.evmChainId,
+    evmVerifyingContract: auth.evmVerifyingContract,
+  };
+}
+
+function consumeReplayAndRecord(state, auth, result, now) {
+  const entry = settlementLedgerEntry(auth, result, now);
+  const store = state.replayStore;
+
+  if (typeof store?.consumeAndRecord === 'function') {
+    return store.consumeAndRecord(auth.replayKey, auth.expiresAt, entry, now);
+  }
+
+  store.add(auth.replayKey, auth.expiresAt, now);
+  return {
+    durable: Boolean(store?.durable),
+    recorded: false,
+    authorizationId: auth.authorizationId,
+  };
+}
+
+export function listRailSettlements(state, limit = 50) {
+  return state.replayStore?.listSettlements?.(limit) ?? [];
+}
+
+export function getRailSettlement(state, authorizationId) {
+  return state.replayStore?.getSettlement?.(authorizationId);
+}
+
 export async function processRailRequest(body, state = createWorkerState(), options = {}) {
   const now = options.now ?? Date.now();
   const validation = validateRailRequest(body, options);
@@ -420,10 +608,10 @@ export async function processRailRequest(body, state = createWorkerState(), opti
     };
   }
 
-  state.replayStore.add(auth.replayKey, auth.expiresAt, now);
-
   if (backend.skipped) {
-    return intentOnlyResult(auth, proof);
+    const result = intentOnlyResult(auth, proof);
+    result.ledger = consumeReplayAndRecord(state, auth, result, now);
+    return result;
   }
 
   const result = {
@@ -439,6 +627,7 @@ export async function processRailRequest(body, state = createWorkerState(), opti
     settlement: backend.settlement,
     headers: x402Headers(auth, proof),
   };
+  result.ledger = consumeReplayAndRecord(state, auth, result, now);
 
   return result;
 }

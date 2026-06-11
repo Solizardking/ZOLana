@@ -77,6 +77,9 @@ How the last-November Zcash-to-Solana port works:
 6. The new `dark/` folder is the combined product map. It groups the Solana
    wallet, agent, DeFi, and swap surfaces while pointing back to the canonical
    implementation folders so code does not fork into stale duplicates.
+7. The rail worker can now keep a sanitized durable ledger with
+   `RAIL_WORKER_STORE_PATH`, so replay protection and settlement status survive
+   process restarts without storing full proof payloads, recipients, or amounts.
 
 Program re-exploration and port mapping:
 
@@ -102,6 +105,7 @@ XAI_MODEL=
 EVM_CHAIN_ID=1
 EVM_PRIVATE_PAYMENT_VERIFIER=
 RAIL_WORKER_BACKEND_TOKEN=
+RAIL_WORKER_STORE_PATH=.zolana/rail-ledger.json
 X402_FACILITATOR_URL=
 AP2_MANDATE_RUNNER_URL=
 M2M_SETTLEMENT_URL=

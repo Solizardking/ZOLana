@@ -11,6 +11,8 @@ The canonical implementation is split across the wallet, SDK, and rail worker.
 - x402/AP2/M2M rail authorization validation
 - Optional backend forwarding to a facilitator, mandate runner, or M2M
   settlement service
+- Optional `RAIL_WORKER_STORE_PATH` ledger for non-ephemeral replay protection
+  and sanitized settlement status
 
 ## Canonical Files
 
@@ -25,3 +27,7 @@ The canonical implementation is split across the wallet, SDK, and rail worker.
 The agent should not receive Solana secret-key JSON, private entropy, seed
 phrases, or unredacted payment secrets. It can review public addresses, chain,
 rail, expiry, amount, proof digest, and policy metadata.
+
+The rail ledger is intentionally sanitized. It should retain authorization IDs,
+receipt IDs, Solana signatures, EVM digests, rail names, and settlement IDs, but
+not full proof payloads, recipients, amounts, or private wallet material.

@@ -21,6 +21,7 @@ The server listens on `127.0.0.1:4020` by default.
 
 ```bash
 RAIL_WORKER_PORT=4020
+RAIL_WORKER_STORE_PATH=.zolana/rail-ledger.json
 RAIL_WORKER_BACKEND_TOKEN=optional-shared-secret
 X402_FACILITATOR_URL=https://facilitator.example/authorize
 AP2_MANDATE_RUNNER_URL=https://ap2.example/mandates/run
@@ -31,6 +32,13 @@ All backend URLs are optional. If a URL is absent for the selected rail, the
 worker returns `mode: "intent-only"` and does not claim settlement. If a URL is
 present, the worker performs local validation first, then posts the proof,
 authorization envelope, and local verification metadata to that backend.
+
+`RAIL_WORKER_STORE_PATH` is optional but recommended. Without it, replay and
+settlement state is in memory. With it, the worker writes a local JSON ledger so
+replay protection and settlement status survive process restarts. The ledger is
+sanitized: it records authorization IDs, receipt IDs, rails, Solana signatures,
+EVM digests, and settlement IDs/status, not full proof payloads, recipients, or
+amounts.
 
 ```bash
 curl -X POST http://127.0.0.1:4020/rail/authorize \
@@ -45,6 +53,13 @@ curl -X POST http://127.0.0.1:4020/rail/authorize \
   "proofPayload": {},
   "railAuthorization": {}
 }
+```
+
+Read settlement ledger entries:
+
+```bash
+curl http://127.0.0.1:4020/rail/settlements
+curl http://127.0.0.1:4020/rail/settlements/rail_x402_...
 ```
 
 ## What It Enforces
@@ -63,7 +78,8 @@ curl -X POST http://127.0.0.1:4020/rail/authorize \
 - M2M binding digest recomputes from receipt ID, amount, commitment, and EVM
   digest
 - authorization has not expired
-- replay key is consumed once per process
+- replay key is consumed once per worker state, or durably when
+  `RAIL_WORKER_STORE_PATH` is configured
 
 ## Settlement Modes
 
@@ -98,3 +114,15 @@ The backend must return JSON. The worker treats `settlementStatus: "settled"` or
 `settled: true` as settled; otherwise accepted responses are normalized to
 pending settlement. Backend rejection or outage returns `502` and does not
 consume the replay key, so the same durable rail authorization can be retried.
+
+Accepted `intent-only` and backend-mode responses include a `ledger` field:
+
+```json
+{
+  "ledger": {
+    "durable": true,
+    "recorded": true,
+    "authorizationId": "rail_ap2_..."
+  }
+}
+```

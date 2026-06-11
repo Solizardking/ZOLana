@@ -48,6 +48,8 @@ Dark Protocol is a comprehensive privacy framework for Solana that brings Zcash-
 - **Backend adapter hooks**: The worker returns `mode: "intent-only"` when no
   backend URL is configured, or forwards locally verified requests to a live
   x402 facilitator, AP2 mandate runner, or M2M settlement backend.
+- **Durable rail ledger**: Set `RAIL_WORKER_STORE_PATH` to persist replay locks
+  and sanitized settlement status across restarts.
 - **Node tests**: Run `npm test` from `dark-protocol/rail-worker`.
 
 ## Architecture
@@ -118,6 +120,7 @@ JUPITER_API_KEY=your_jupiter_api_key  # Optional
 REDPILL_API_KEY=your_redpill_api_key  # Optional, for AI agents
 HELIUS_RPC_URL=https://mainnet.helius-rpc.com/?api-key=your_api_key
 RAIL_WORKER_BACKEND_TOKEN=optional_shared_secret
+RAIL_WORKER_STORE_PATH=.zolana/rail-ledger.json
 X402_FACILITATOR_URL=https://facilitator.example/authorize
 AP2_MANDATE_RUNNER_URL=https://ap2.example/mandates/run
 M2M_SETTLEMENT_URL=https://m2m.example/sessions/settle
