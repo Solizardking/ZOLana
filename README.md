@@ -175,11 +175,11 @@ M2M_SETTLEMENT_URL=
 | [`dark-protocol/rail-worker/`](./dark-protocol/rail-worker/README.md) | Executable intent-mode x402/AP2/M2M rail authorization worker |
 | [`dark-protocol/evm-verifier/`](./dark-protocol/evm-verifier/README.md) | EVM consume-once verifier for private-payment intent proofs |
 | [`dark-wallet/`](./dark-wallet/README.md) | Browser-based privacy wallet with shielded balances, private transfers, and swap UX |
-| [`darkswap/`](./darkswap/README.md) | Jupiter routing examples and swap execution references |
+| [`darkswap/`](./darkswap/README.md) | Jupiter routing reference examples; not part of the supported public release surface |
 | [`paper/`](./paper/README.md) | Offline paper-wallet generator and air-gapped cold-storage tooling |
-| [`backpack-master/`](./backpack-master/README.md) | Backpack wallet monorepo for Solana and cross-chain wallet references |
+| [`backpack-master/`](./backpack-master/README.md) | Vendored Backpack wallet reference monorepo; not part of the supported public release surface |
 | [`helius-sdk-main/`](./helius-sdk-main/README.md) | Helius RPC, webhooks, DAS, and transaction infrastructure |
-| [`jupiter-amm-implementation-main/`](./jupiter-amm-implementation-main/README.md) | Jupiter AMM and routing primitives for swap execution |
+| [`jupiter-amm-implementation-main/`](./jupiter-amm-implementation-main/README.md) | Vendored Jupiter AMM reference code; not part of the supported public release surface |
 | [`depends/`](./depends/README.md) | Cross-compilation dependency builder and build support |
 | [`build-aux/`](./build-aux/README.md) | GNU Autotools support files and build system glue |
 | [`contrib/`](./contrib/README.md) | Packaging, Docker, CI/CD, and deployment tooling |
@@ -288,11 +288,11 @@ The operational layer that lets agents run the system with policy.
 | `dark-protocol/` | Core privacy programs | 10+ documented instruction surfaces, private swap flows, AI hooks |
 | `src/` | Zcash node and consensus | Privacy kernel, wallet, and RPC foundation |
 | `dark-wallet/` | Browser privacy wallet | Vite, React, TypeScript, and modern wallet UX |
-| `darkswap/` | Swap routing layer | Jupiter quote and swap integration examples |
+| `darkswap/` | Swap routing layer | Jupiter quote and swap integration reference examples |
 | `paper/` | Cold storage tooling | Offline generation and printable keys |
-| `backpack-master/` | Wallet reference | Solana wallet monorepo and cross-chain wallet context |
+| `backpack-master/` | Wallet reference | Vendored wallet monorepo for implementation reference only |
 | `helius-sdk-main/` | Infra layer | RPC, webhooks, DAS, and smart transaction support |
-| `jupiter-amm-implementation-main/` | AMM primitives | Reference routing and liquidity logic |
+| `jupiter-amm-implementation-main/` | AMM primitives | Vendored routing and liquidity reference logic |
 
 ---
 

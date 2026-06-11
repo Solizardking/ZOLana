@@ -65,9 +65,9 @@
 | `src/` | 🏛️ **Zcash full-node (zcashd) C++ daemon** | ~180 source files | `zcash` `c++` `consensus` |
 | `dark-wallet/` | 🎨 **Browser-based privacy wallet** | Vite + React + Tailwind | `wallet` `ui` `shielded` |
 | `darkswap/` | 🔄 **Jupiter DEX integration reference examples** | 3 sub-projects | `jupiter` `swaps` `reference` |
-| `backpack-master/` | 👛 **Backpack wallet monorepo** | Coral's Solana wallet | `wallet` `xNFT` `coral` |
+| `backpack-master/` | 👛 **Backpack wallet reference monorepo** | Vendored implementation reference | `wallet` `xNFT` `reference` |
 | `helius-sdk-main/` | 🏗️ **Helius Solana SDK** | RPC + Webhooks | `infrastructure` `rpc` |
-| `jupiter-amm-impl/` | 🔧 **Jupiter AMM Rust SDK** | 6 crate workspace | `amm` `routing` |
+| `jupiter-amm-impl/` | 🔧 **Jupiter AMM Rust reference SDK** | Vendored implementation reference | `amm` `routing` `reference` |
 | `paper/` | 📄 **Academic research paper** | Dark Protocol whitepaper | `research` `academic` |
 | `depends/` | 📦 **Zcash cross-compilation deps** | 20+ packages | `build` `dependencies` |
 | `build-aux/` | 🔨 **GNU Autotools (m4 macros)** | Build system | `autotools` `configure` |
