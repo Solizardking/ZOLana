@@ -53,3 +53,50 @@ intent object. Contract verification uses Solidity `keccak256` and the EIP-712
 domain separator, so the script digest is only a fixture aid, not a replacement
 for contract verification.
 
+## Submit Proof To Verifier
+
+`scripts/submit-intent-proof.mjs` turns a wallet-exported proof payload into a
+Foundry `cast send` call for `recordIntentProof`. Dry-run is the default and
+prints the redacted command plan without broadcasting.
+
+```bash
+node scripts/submit-intent-proof.mjs \
+  --proof zolana-private-payment-proof.json \
+  --contract "$EVM_PRIVATE_PAYMENT_VERIFIER" \
+  --signer "$EVM_INTENT_SIGNER" \
+  --signature "$EVM_INTENT_SIGNATURE" \
+  --solana-slot "$SOLANA_VERIFIED_SLOT" \
+  --dry-run
+```
+
+Broadcast only when the EVM RPC and relayer private key are configured:
+
+```bash
+EVM_RPC_URL=https://...
+EVM_PRIVATE_KEY=0x...
+node scripts/submit-intent-proof.mjs \
+  --proof zolana-private-payment-proof.json \
+  --contract "$EVM_PRIVATE_PAYMENT_VERIFIER" \
+  --signer "$EVM_INTENT_SIGNER" \
+  --signature "$EVM_INTENT_SIGNATURE" \
+  --solana-slot "$SOLANA_VERIFIED_SLOT" \
+  --execute
+```
+
+Required values:
+
+- `EVM_PRIVATE_PAYMENT_VERIFIER` - deployed verifier contract address.
+- `EVM_INTENT_SIGNER` - EVM address that signed the EIP-712 intent.
+- `EVM_INTENT_SIGNATURE` - 65-byte EVM signature over the verifier digest.
+- `SOLANA_VERIFIED_SLOT` - slot verified by the wallet or rail worker.
+- `EVM_RPC_URL` and `EVM_PRIVATE_KEY` - only required for `--execute`.
+
+The wallet currently exports the typed intent payload. The EVM signature must be
+created by the selected EVM signer or relayer policy before this script can
+broadcast. This keeps the Solana paper wallet from holding EVM private keys.
+
+## Relay Test
+
+```bash
+node --test test/*.test.mjs
+```

@@ -44,6 +44,11 @@ XAI_BASE_URL=
 XAI_MODEL=
 EVM_CHAIN_ID=1
 EVM_PRIVATE_PAYMENT_VERIFIER=
+EVM_RPC_URL=
+EVM_PRIVATE_KEY=
+EVM_INTENT_SIGNER=
+EVM_INTENT_SIGNATURE=
+SOLANA_VERIFIED_SLOT=
 RAIL_WORKER_BACKEND_TOKEN=
 RAIL_WORKER_STORE_PATH=.zolana/rail-ledger.json
 RAIL_WORKER_URL=http://127.0.0.1:4020
@@ -61,8 +66,8 @@ M2M_SETTLEMENT_URL=
 The current implementation is production-shaped but honest about settlement.
 Solana Memo anchors, durable receipts, rail authorization exports, direct wallet
 submission to the rail worker, independent worker-side Solana Memo verification,
-EVM verifier tests, durable rail-worker replay/settlement state, and backend
-adapter hooks exist. A live x402
+EVM verifier tests, a dry-run-first EVM proof relay, durable rail-worker
+replay/settlement state, and backend adapter hooks exist. A live x402
 facilitator, AP2 mandate runner, or M2M settlement backend must be supplied
 through the env vars above before the system should claim final payment
 settlement.

@@ -86,6 +86,9 @@ How the last-November Zcash-to-Solana port works:
 9. The rail worker can independently verify the Solana Memo anchor through
    Helius or another Solana RPC before consuming replay keys or forwarding to a
    settlement backend.
+10. The EVM verifier now has a relay CLI that converts wallet proof payloads
+    into `cast send recordIntentProof(...)` calls, keeping broadcast dry-run by
+    default and requiring an explicit EVM signer signature.
 
 Program re-exploration and port mapping:
 
@@ -110,6 +113,11 @@ XAI_BASE_URL=
 XAI_MODEL=
 EVM_CHAIN_ID=1
 EVM_PRIVATE_PAYMENT_VERIFIER=
+EVM_RPC_URL=
+EVM_PRIVATE_KEY=
+EVM_INTENT_SIGNER=
+EVM_INTENT_SIGNATURE=
+SOLANA_VERIFIED_SLOT=
 RAIL_WORKER_BACKEND_TOKEN=
 RAIL_WORKER_STORE_PATH=.zolana/rail-ledger.json
 RAIL_WORKER_URL=http://127.0.0.1:4020
