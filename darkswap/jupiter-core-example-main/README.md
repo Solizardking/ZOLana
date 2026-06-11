@@ -1,5 +1,10 @@
 # Jupiter Swap API Example
 
+ZOLana note: this example directory is kept as reference only and is not part
+of the supported public release surface. Dependency manifests are stripped in
+this branch to keep public dependency scanning focused on maintained product
+packages.
+
 Dependency-free quote/order example for Jupiter Swap API v2.
 
 This sample does not read or sign with a private key. It requests an order from

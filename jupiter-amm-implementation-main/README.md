@@ -1,5 +1,9 @@
 # Jupiter Amm Implementation
 
+ZOLana note: this is a vendored reference snapshot, not a supported public
+release surface. Dependency manifests are stripped in this branch to keep
+public dependency scanning focused on maintained product packages.
+
 This is a guide to help create the implementation necessary
 
 Guideline

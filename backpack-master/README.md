@@ -15,6 +15,10 @@
   </p>
 </div>
 
+ZOLana note: this is a vendored reference snapshot, not a supported public
+release surface. Dependency manifests are stripped in this branch to keep
+public dependency scanning focused on maintained product packages.
+
 ### Note
 
 - Backpack is in active development, so all APIs are subject to change.

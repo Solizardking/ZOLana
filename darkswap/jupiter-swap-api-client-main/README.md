@@ -1,5 +1,9 @@
 # jup-swap-api-client
 
+ZOLana note: this is a vendored reference snapshot, not a supported public
+release surface. Dependency manifests are stripped in this branch to keep
+public dependency scanning focused on maintained product packages.
+
 ## Introduction
 
 The `jup-swap-api-client` is a Rust client library designed to simplify the integration of the Jupiter Swap API, enabling seamless swaps on the Solana blockchain.
