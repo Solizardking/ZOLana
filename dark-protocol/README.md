@@ -41,6 +41,8 @@ Dark Protocol is a comprehensive privacy framework for Solana that brings Zcash-
 - **Relay CLI**: `scripts/submit-intent-proof.mjs` converts a wallet proof
   payload into a dry-run or executable Foundry `cast send recordIntentProof`
   call.
+- **Signer CLI**: `scripts/sign-intent-proof.mjs` derives the verifier digest
+  and signs it with `EVM_INTENT_PRIVATE_KEY` outside the Solana paper wallet.
 - **Foundry tests**: Run `forge test` from `dark-protocol/evm-verifier`.
 
 ### Rail Worker

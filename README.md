@@ -89,6 +89,9 @@ How the last-November Zcash-to-Solana port works:
 10. The EVM verifier now has a relay CLI that converts wallet proof payloads
     into `cast send recordIntentProof(...)` calls, keeping broadcast dry-run by
     default and requiring an explicit EVM signer signature.
+11. The verifier package also has a signer CLI that derives the verifier digest
+    with `cast call hashIntent(...)` and signs it with a separate
+    `EVM_INTENT_PRIVATE_KEY`, keeping the paper wallet free of EVM keys.
 
 Program re-exploration and port mapping:
 
@@ -115,6 +118,7 @@ EVM_CHAIN_ID=1
 EVM_PRIVATE_PAYMENT_VERIFIER=
 EVM_RPC_URL=
 EVM_PRIVATE_KEY=
+EVM_INTENT_PRIVATE_KEY=
 EVM_INTENT_SIGNER=
 EVM_INTENT_SIGNATURE=
 SOLANA_VERIFIED_SLOT=

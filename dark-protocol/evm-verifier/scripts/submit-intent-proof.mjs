@@ -2,7 +2,8 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { createVerifierIntentFromProofPayload } from './intent-proof.mjs';
 
-const RECORD_SIGNATURE = 'recordIntentProof((string,string,string,string,bool,string,string,string,string,string,string,string,string),address,bytes,uint256)';
+export const INTENT_TUPLE_TYPE = '(string,string,string,string,bool,string,string,string,string,string,string,string,string)';
+export const RECORD_SIGNATURE = `recordIntentProof(${INTENT_TUPLE_TYPE},address,bytes,uint256)`;
 
 function usage() {
   return [
@@ -101,21 +102,7 @@ export function buildCastArgs(intent, options) {
     throw new Error('Solana slot must be a non-negative safe integer');
   }
 
-  const tuple = castTuple([
-    castString(intent.receiptId),
-    castString(intent.rail),
-    castString(intent.settlement),
-    castString(intent.proofLayer),
-    intent.durableReceipt ? 'true' : 'false',
-    castString(intent.recipient),
-    castString(intent.amountLamports),
-    castString(intent.commitmentHex),
-    castString(intent.nonce),
-    castString(intent.memoHash || '0x'),
-    castString(intent.solanaSignature),
-    castString(intent.solanaCluster),
-    castString(intent.createdAt),
-  ]);
+  const tuple = buildIntentTupleArg(intent);
 
   const args = [
     'send',
@@ -131,6 +118,24 @@ export function buildCastArgs(intent, options) {
   if (options.privateKey) args.push('--private-key', options.privateKey);
 
   return args;
+}
+
+export function buildIntentTupleArg(intent) {
+  return castTuple([
+    castString(intent.receiptId),
+    castString(intent.rail),
+    castString(intent.settlement),
+    castString(intent.proofLayer),
+    intent.durableReceipt ? 'true' : 'false',
+    castString(intent.recipient),
+    castString(intent.amountLamports),
+    castString(intent.commitmentHex),
+    castString(intent.nonce),
+    castString(intent.memoHash || '0x'),
+    castString(intent.solanaSignature),
+    castString(intent.solanaCluster),
+    castString(intent.createdAt),
+  ]);
 }
 
 function castString(value) {

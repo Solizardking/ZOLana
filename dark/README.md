@@ -46,6 +46,7 @@ EVM_CHAIN_ID=1
 EVM_PRIVATE_PAYMENT_VERIFIER=
 EVM_RPC_URL=
 EVM_PRIVATE_KEY=
+EVM_INTENT_PRIVATE_KEY=
 EVM_INTENT_SIGNER=
 EVM_INTENT_SIGNATURE=
 SOLANA_VERIFIED_SLOT=
@@ -66,7 +67,7 @@ M2M_SETTLEMENT_URL=
 The current implementation is production-shaped but honest about settlement.
 Solana Memo anchors, durable receipts, rail authorization exports, direct wallet
 submission to the rail worker, independent worker-side Solana Memo verification,
-EVM verifier tests, a dry-run-first EVM proof relay, durable rail-worker
+EVM verifier tests, dry-run-first EVM proof signing and relay scripts, durable rail-worker
 replay/settlement state, and backend adapter hooks exist. A live x402
 facilitator, AP2 mandate runner, or M2M settlement backend must be supplied
 through the env vars above before the system should claim final payment

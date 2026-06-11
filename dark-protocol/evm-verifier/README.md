@@ -30,8 +30,8 @@ forge test
 3. Click `Verify Anchor` in the wallet so the receipt stores verified Solana
    slot, payer, and Memo-match metadata.
 4. Export the proof payload.
-5. Convert or submit `evmIntentProof.eip712.message` to
-   `ZolanaPrivatePaymentVerifier.recordIntentProof`.
+5. Sign the verifier digest with an EVM intent signer.
+6. Submit the signed proof to `ZolanaPrivatePaymentVerifier.recordIntentProof`.
 
 ## Contract
 
@@ -54,6 +54,36 @@ domain separator, so the script digest is only a fixture aid, not a replacement
 for contract verification.
 
 ## Submit Proof To Verifier
+
+First produce the EVM intent signature. This calls the deployed verifier's
+`hashIntent` method through `cast call`, then signs the returned raw digest with
+`cast wallet sign --no-hash`. Dry-run is the default.
+
+```bash
+node scripts/sign-intent-proof.mjs \
+  --proof zolana-private-payment-proof.json \
+  --contract "$EVM_PRIVATE_PAYMENT_VERIFIER" \
+  --rpc-url "$EVM_RPC_URL" \
+  --dry-run
+```
+
+Sign only when the selected intent signer key is present:
+
+```bash
+EVM_INTENT_PRIVATE_KEY=0x...
+node scripts/sign-intent-proof.mjs \
+  --proof zolana-private-payment-proof.json \
+  --contract "$EVM_PRIVATE_PAYMENT_VERIFIER" \
+  --rpc-url "$EVM_RPC_URL" \
+  --sign
+```
+
+The output `signature` becomes `EVM_INTENT_SIGNATURE`. Derive
+`EVM_INTENT_SIGNER` from the same key with:
+
+```bash
+cast wallet address --private-key "$EVM_INTENT_PRIVATE_KEY"
+```
 
 `scripts/submit-intent-proof.mjs` turns a wallet-exported proof payload into a
 Foundry `cast send` call for `recordIntentProof`. Dry-run is the default and
@@ -86,17 +116,18 @@ node scripts/submit-intent-proof.mjs \
 Required values:
 
 - `EVM_PRIVATE_PAYMENT_VERIFIER` - deployed verifier contract address.
+- `EVM_INTENT_PRIVATE_KEY` - only needed by `sign-intent-proof.mjs --sign`.
 - `EVM_INTENT_SIGNER` - EVM address that signed the EIP-712 intent.
 - `EVM_INTENT_SIGNATURE` - 65-byte EVM signature over the verifier digest.
 - `SOLANA_VERIFIED_SLOT` - slot verified by the wallet or rail worker.
 - `EVM_RPC_URL` and `EVM_PRIVATE_KEY` - only required for `--execute`.
 
-The wallet currently exports the typed intent payload. The EVM signature must be
-created by the selected EVM signer or relayer policy before this script can
-broadcast. This keeps the Solana paper wallet from holding EVM private keys.
+The wallet exports the typed intent payload. The signing and relay scripts keep
+EVM private keys outside the Solana paper wallet flow.
 
 ## Relay Test
 
 ```bash
 node --test test/*.test.mjs
+node --test test-js/*.test.mjs
 ```
