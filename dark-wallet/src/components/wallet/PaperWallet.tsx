@@ -713,19 +713,19 @@ const PaperWallet: React.FC = () => {
             </div>
             <div className="space-y-3">
               {paymentReceipts.slice(0, 5).map((receipt) => (
-                <div key={receipt.id} className="rounded-lg border border-gray-800 bg-gray-950/70 p-3 text-sm text-gray-300">
+                <div key={receipt.id} className="receipt-ticket">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-mono text-cyan-300 break-all">{receipt.id}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="receipt-id">{receipt.id}</p>
+                      <p className="receipt-meta">
                         {receipt.rail.toUpperCase()} / {receipt.settlement.toUpperCase()} settlement / {receipt.proofLayer.toUpperCase()} proof
                       </p>
-                      <p className={`mt-1 text-xs ${
+                      <p className={`receipt-status ${
                         receipt.status === 'anchored'
-                          ? 'text-emerald-300'
+                          ? 'receipt-status-anchored'
                           : receipt.status === 'failed'
-                            ? 'text-red-300'
-                            : 'text-amber-300'
+                            ? 'receipt-status-failed'
+                            : 'receipt-status-pending'
                       }`}>
                         {receipt.status.toUpperCase()}
                       </p>
@@ -793,10 +793,10 @@ const PaperWallet: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                  <p className="mt-2 font-mono text-xs text-gray-400 break-all">{receipt.commitmentHex}</p>
+                  <p className="receipt-commitment">{receipt.commitmentHex}</p>
                   {receipt.solanaAnchor && (
                     <a
-                      className="mt-2 inline-block text-xs text-cyan-300 hover:text-cyan-200"
+                      className="receipt-link"
                       href={receipt.solanaAnchor.explorerUrl}
                       target="_blank"
                       rel="noreferrer"
@@ -810,7 +810,7 @@ const PaperWallet: React.FC = () => {
                     </p>
                   )}
                   {receipt.railWorker && (
-                    <div className="mt-2 rounded-md border border-cyan-900/60 bg-cyan-950/20 p-2 text-xs text-cyan-100">
+                    <div className="rail-worker-ticket">
                       <p className="font-mono break-all">Rail auth: {receipt.railWorker.authorizationId || 'not recorded'}</p>
                       <p>
                         Worker: {receipt.railWorker.workerUrl || runtime.railWorkerUrl || 'not configured'} / {receipt.railWorker.mode ?? 'unsubmitted'}
@@ -842,10 +842,10 @@ const PaperWallet: React.FC = () => {
       </section>
 
       {status && (
-        <div className={`p-4 rounded-lg ${
+        <div className={`status-banner ${
           status.startsWith('Error') || status.includes('error')
-            ? 'bg-red-500/20 border border-red-500/50 text-red-400'
-            : 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-300'
+            ? 'status-banner-error'
+            : 'status-banner-info'
         }`}>
           {status}
         </div>

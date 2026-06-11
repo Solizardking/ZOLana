@@ -48,7 +48,7 @@ pub fn add_handler(
 
     // Transfer tokens to pool
     let transfer_ctx = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_program.key(),
         Transfer {
             from: ctx.accounts.user_token_account.to_account_info(),
             to: ctx.accounts.pool_token_account.to_account_info(),
@@ -120,7 +120,7 @@ pub fn remove_handler(
     let signer = &[&pool_seeds[..]];
 
     let transfer_ctx = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_program.key(),
         Transfer {
             from: ctx.accounts.pool_token_account.to_account_info(),
             to: ctx.accounts.recipient_token_account.to_account_info(),

@@ -509,9 +509,8 @@ pub fn generate_spending_key() -> Result<SaplingSpendingKey> {
     // In production, use proper randomness source
     // For Solana: sol_get_clock_sysvar + additional entropy
     use solana_program::clock::Clock;
-    use solana_program::sysvar::Sysvar;
 
-    let clock = Clock::get()?;
+    let clock = <Clock as solana_program::sysvar::Sysvar>::get()?;
     let mut hasher = Sha512::new();
     hasher.update(&clock.unix_timestamp.to_le_bytes());
     hasher.update(&clock.slot.to_le_bytes());

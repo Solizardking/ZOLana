@@ -155,10 +155,10 @@ const UnshieldTokens: React.FC = () => {
         )}
 
         {status && (
-          <div className={`p-4 rounded-lg ${
+          <div className={`status-banner ${
             status.includes('Error')
-              ? 'bg-red-500/20 border border-red-500/50 text-red-400'
-              : 'bg-green-500/20 border border-green-500/50 text-green-400'
+              ? 'status-banner-error'
+              : 'status-banner-info'
           }`}>
             {status}
           </div>

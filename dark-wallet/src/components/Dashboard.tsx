@@ -67,8 +67,66 @@ const Dashboard: React.FC = () => {
     return () => window.removeEventListener(SHIELDED_LEDGER_EVENT, syncShieldedLedger);
   }, [publicKey]);
 
+  const heliusReady = Boolean(runtime.heliusRpcUrl || runtime.heliusApiKey);
+  const agentReady = Boolean(runtime.xaiApiKey || runtime.railWorkerUrl);
+  const walletLabel = publicKey ? `${publicKey.toBase58().slice(0, 4)}...${publicKey.toBase58().slice(-4)}` : 'offline';
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="dashboard-shell">
+      <section className="command-hero">
+        <div className="hero-copy">
+          <p className="section-kicker">Dark Wallet / SVM Port</p>
+          <h2 className="hero-title">
+            Cold paper custody with live Solana rails.
+          </h2>
+          <p className="hero-body">
+            A Zcash Sapling-style paper wallet rebuilt for Solana: local key generation,
+            shield/unshield intent anchors, durable private-payment receipts, and Dark Clawd rail planning.
+          </p>
+
+          <div className="hero-badges" aria-label="Runtime capabilities">
+            <span className={connected ? 'status-pill status-pill-live' : 'status-pill'}>
+              Wallet {connected ? walletLabel : 'not connected'}
+            </span>
+            <span className={heliusReady ? 'status-pill status-pill-live' : 'status-pill'}>
+              {heliusReady ? 'Helius configured' : 'Public RPC fallback'}
+            </span>
+            <span className={agentReady ? 'status-pill status-pill-live' : 'status-pill'}>
+              {agentReady ? 'Dark Clawd armed' : 'Agent offline'}
+            </span>
+          </div>
+        </div>
+
+        <aside className="hero-terminal" aria-label="Private rail status">
+          <div className="terminal-header">
+            <span>rail-plan.local</span>
+            <span>{formatNetworkLabel(runtime.defaultNetwork)}</span>
+          </div>
+          <div className="terminal-grid">
+            <div>
+              <span className="terminal-label">Shielded ledger</span>
+              <strong>{shieldedBalance.toFixed(4)} SOL</strong>
+            </div>
+            <div>
+              <span className="terminal-label">Transparent</span>
+              <strong>{balance.toFixed(4)} SOL</strong>
+            </div>
+            <div>
+              <span className="terminal-label">Slot</span>
+              <strong>{slot ?? 'offline'}</strong>
+            </div>
+            <div>
+              <span className="terminal-label">Proof path</span>
+              <strong>EVM + SVM</strong>
+            </div>
+          </div>
+          <div className="terminal-line">
+            <span />
+            x402 / AP2 / M2M receipts are staged locally before rail-worker authorization.
+          </div>
+        </aside>
+      </section>
+
       <section className="dashboard-grid">
         <div className="metric-card">
           <h3 className="metric-label">Transparent</h3>
@@ -109,7 +167,8 @@ const Dashboard: React.FC = () => {
         </div>
       </section>
 
-      <section className="card tab-card">
+      <section className="tab-dock">
+        <div className="tab-dock-label">Operator Mode</div>
         <div className="tab-rail">
           {tabs.map((tab) => (
             <button
@@ -137,6 +196,9 @@ const Dashboard: React.FC = () => {
             Shielding, unshielding, and private transfers need an injected wallet.
             The paper-wallet tab works offline and can be used without connecting.
           </p>
+          <div className="connect-hint">
+            Paper wallet generation remains available because private keys are generated locally and never require RPC.
+          </div>
         </section>
       ) : (
         <section className="card module-panel">
@@ -147,8 +209,9 @@ const Dashboard: React.FC = () => {
         </section>
       )}
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card">
+      <section className="ops-grid">
+        <div className="ops-card">
+          <span className="ops-index">01</span>
           <h4 className="footer-title">Port Status</h4>
           <ul className="footer-list">
             <li>Zcash paper flow adapted to Solana keypairs</li>
@@ -157,7 +220,8 @@ const Dashboard: React.FC = () => {
           </ul>
         </div>
 
-        <div className="card">
+        <div className="ops-card">
+          <span className="ops-index">02</span>
           <h4 className="footer-title">Privacy</h4>
           <ul className="footer-list">
             <li>Shielded address UX preserved</li>
@@ -166,7 +230,8 @@ const Dashboard: React.FC = () => {
           </ul>
         </div>
 
-        <div className="card">
+        <div className="ops-card">
+          <span className="ops-index">03</span>
           <h4 className="footer-title">Agent</h4>
           <ul className="footer-list">
             <li>Dark Clawd uses xAI when configured</li>

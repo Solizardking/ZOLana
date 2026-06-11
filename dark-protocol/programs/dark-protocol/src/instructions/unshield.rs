@@ -52,7 +52,7 @@ pub fn handler(
     let signer = &[&protocol_seeds[..]];
 
     let transfer_ctx = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_program.key(),
         Transfer {
             from: ctx.accounts.pool_token_account.to_account_info(),
             to: ctx.accounts.recipient_token_account.to_account_info(),

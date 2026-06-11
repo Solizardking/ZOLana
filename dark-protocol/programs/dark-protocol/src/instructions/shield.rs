@@ -28,7 +28,7 @@ pub fn handler(
 
     // Transfer tokens from user to pool
     let transfer_ctx = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_program.key(),
         Transfer {
             from: ctx.accounts.user_token_account.to_account_info(),
             to: ctx.accounts.pool_token_account.to_account_info(),
