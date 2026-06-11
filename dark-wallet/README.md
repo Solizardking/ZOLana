@@ -69,8 +69,17 @@ selected rail:
 - `M2M` - machine-session envelope with payer/payee, settlement window,
   replay key, and binding digest.
 
-This is a wallet-side primitive for the Dark Protocol path; it is not yet final
-on-chain settlement or a deployed verifier contract.
+The exported envelope can be posted to
+`dark-protocol/rail-worker` at `/rail/authorize`. That worker validates the
+wallet proof, Solana anchor binding, EVM digest binding, expiry, and replay key.
+If no backend URL is configured, the worker returns `mode: "intent-only"`. If
+`X402_FACILITATOR_URL`, `AP2_MANDATE_RUNNER_URL`, or `M2M_SETTLEMENT_URL` is
+configured, the worker forwards the locally verified request to that live rail
+backend and returns normalized settlement status.
+
+This is still an intent/proof/rail primitive for the Dark Protocol path; final
+production settlement depends on the selected deployed Solana programs, EVM
+verifier address, and live rail backend.
 
 ## SVM Intent Anchoring
 

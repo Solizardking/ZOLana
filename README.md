@@ -49,6 +49,9 @@ What is now wired:
 5. `dark-wallet/src/sdk/rail-authorization.ts` adds x402/AP2/M2M authorization
    envelopes with expiry, replay key, Solana anchor binding, verified slot, and
    EVM digest binding for agent/facilitator handoff.
+6. `dark-protocol/rail-worker/` validates those exported envelopes, enforces
+   replay and expiry locally, and can now forward validated requests to
+   configured x402, AP2, or M2M settlement backends.
 
 How the last-November Zcash-to-Solana port works:
 
@@ -71,6 +74,20 @@ How the last-November Zcash-to-Solana port works:
    authorization envelope for x402/AP2/M2M workers. The EVM proof export is an
    intent payload for later verifier or contract anchoring, not yet final
    privacy settlement.
+6. The new `dark/` folder is the combined product map. It groups the Solana
+   wallet, agent, DeFi, and swap surfaces while pointing back to the canonical
+   implementation folders so code does not fork into stale duplicates.
+
+Program re-exploration and port mapping:
+
+| Zcash/Sapling reference | Solana/ZOLana port | Current implementation |
+|-------------------------|--------------------|------------------------|
+| Offline paper wallet entropy and printable recovery | Solana keypair paper wallet with browser-local entropy | `paper/`, `dark-wallet/src/components/wallet/PaperWallet.tsx` |
+| Sapling notes and commitments | Durable wallet receipts, note-like commitments, nullifier-ready intent data | `dark-wallet/src/sdk/private-payment.ts`, `dark-protocol/sdk/typescript/src/intent.ts` |
+| Shielded transaction metadata discipline | Wallet-signed Solana Memo intent anchors on devnet/mainnet-beta | `dark-wallet/src/sdk/dark-protocol.ts` |
+| Viewing/spending separation | Public-only agent review plus local secret-key custody | `dark-wallet/src/utils/dark-clawd-agent.ts` |
+| Cross-domain proof handoff | EIP-712-style EVM intent proof and consume-once verifier | `dark-protocol/evm-verifier/` |
+| Payment facilitator handoff | x402/AP2/M2M rail authorization worker with optional backend forwarding | `dark-protocol/rail-worker/` |
 
 Relevant env:
 
@@ -82,6 +99,12 @@ SOLANA_CLUSTER=devnet        # or mainnet-beta
 XAI_API_KEY=
 XAI_BASE_URL=
 XAI_MODEL=
+EVM_CHAIN_ID=1
+EVM_PRIVATE_PAYMENT_VERIFIER=
+RAIL_WORKER_BACKEND_TOKEN=
+X402_FACILITATOR_URL=
+AP2_MANDATE_RUNNER_URL=
+M2M_SETTLEMENT_URL=
 ```
 
 ---
@@ -90,6 +113,7 @@ XAI_MODEL=
 
 | Directory | Purpose |
 |-----------|---------|
+| [`dark/`](./dark/README.md) | Combined product map for Dark Wallet, Dark Agent, Dark DeFi, and Dark Swap surfaces |
 | [`src/`](./src/README.md) | Zcash full-node daemon, consensus, networking, wallet, RPC, and the privacy core |
 | [`dark-protocol/`](./dark-protocol/README.md) | Solana privacy programs, ZK proofs, shield/unshield flows, private swaps, and AI-agent hooks |
 | [`dark-protocol/rail-worker/`](./dark-protocol/rail-worker/README.md) | Executable intent-mode x402/AP2/M2M rail authorization worker |
@@ -193,6 +217,7 @@ The operational layer that lets agents run the system with policy.
 │  ─ depends/                  │  ─ dark-wallet/                      │
 │  ─ build-aux/                │  ─ darkswap/                         │
 │  ─ zcutil/                   │  ─ paper/                            │
+│                              │  ─ dark/                             │
 ├──────────────────────────────┴──────────────────────────────────────┤
 │  Infrastructure + Wallet Ecosystem                                  │
 │  ─ helius-sdk-main/  ─ backpack-master/  ─ jupiter-amm-implementation-main/ │
@@ -203,6 +228,7 @@ The operational layer that lets agents run the system with policy.
 
 | Directory | Role | Notes |
 |-----------|------|-------|
+| `dark/` | Combined product map | Groups wallet, agent, DeFi, and swap surfaces without duplicating source |
 | `dark-protocol/` | Core privacy programs | 10+ documented instruction surfaces, private swap flows, AI hooks |
 | `src/` | Zcash node and consensus | Privacy kernel, wallet, and RPC foundation |
 | `dark-wallet/` | Browser privacy wallet | Vite, React, TypeScript, and modern wallet UX |
