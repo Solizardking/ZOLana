@@ -46,10 +46,14 @@ What is now wired:
    staging for `x402`, `AP2`, and `M2M`, with explicit Solana/EVM settlement,
    lamport-denominated receipts, local commitments, Solana anchor metadata, and
    exportable EIP-712-style EVM intent proof payloads.
-5. `dark-wallet/src/sdk/rail-authorization.ts` adds x402/AP2/M2M authorization
+5. `dark-wallet/src/sdk/shielded-ledger.ts` adds a durable browser-local
+   shielded note ledger. Shield anchors credit note commitments; unshield and
+   private-transfer anchors debit those commitments with nullifier-like local
+   records so the UX no longer depends on hard-coded mock shielded balances.
+6. `dark-wallet/src/sdk/rail-authorization.ts` adds x402/AP2/M2M authorization
    envelopes with expiry, replay key, Solana anchor binding, verified slot, and
    EVM digest binding for agent/facilitator handoff.
-6. `dark-protocol/rail-worker/` validates those exported envelopes, enforces
+7. `dark-protocol/rail-worker/` validates those exported envelopes, enforces
    replay and expiry locally, and can now forward validated requests to
    configured x402, AP2, or M2M settlement backends.
 
@@ -64,7 +68,11 @@ How the last-November Zcash-to-Solana port works:
    finalized.
 4. Helius supplies practical RPC access for devnet and mainnet-beta, while the
    paper-wallet generation path remains fully local and does not require RPC.
-5. Private-payment receipts are currently wallet-side durable records. They can
+5. Shield/unshield/private-transfer now maintain a browser-local shielded note
+   ledger after the Solana Memo anchor succeeds. This gives the port a durable
+   note/balance surface while the full on-chain note scanner, nullifier set, and
+   ZK verifier program are still being finalized.
+6. Private-payment receipts are currently wallet-side durable records. They can
    be anchored as Solana Memo intent transactions, then store the resulting
    signature, cluster, explorer URL, and status on the same receipt. The wallet
    can re-fetch that transaction and verify the Memo payload still matches the
@@ -74,22 +82,22 @@ How the last-November Zcash-to-Solana port works:
    authorization envelope for x402/AP2/M2M workers. The EVM proof export is an
    intent payload for later verifier or contract anchoring, not yet final
    privacy settlement.
-6. The new `dark/` folder is the combined product map. It groups the Solana
+7. The new `dark/` folder is the combined product map. It groups the Solana
    wallet, agent, DeFi, and swap surfaces while pointing back to the canonical
    implementation folders so code does not fork into stale duplicates.
-7. The rail worker can now keep a sanitized durable ledger with
+8. The rail worker can now keep a sanitized durable ledger with
    `RAIL_WORKER_STORE_PATH`, so replay protection and settlement status survive
    process restarts without storing full proof payloads, recipients, or amounts.
-8. Dark Wallet can submit an anchored receipt directly to the rail worker when
+9. Dark Wallet can submit an anchored receipt directly to the rail worker when
    `RAIL_WORKER_URL` or `VITE_RAIL_WORKER_URL` is configured, then refresh the
    worker ledger status from the paper-wallet receipt row.
-9. The rail worker can independently verify the Solana Memo anchor through
+10. The rail worker can independently verify the Solana Memo anchor through
    Helius or another Solana RPC before consuming replay keys or forwarding to a
    settlement backend.
-10. The EVM verifier now has a relay CLI that converts wallet proof payloads
+11. The EVM verifier now has a relay CLI that converts wallet proof payloads
     into `cast send recordIntentProof(...)` calls, keeping broadcast dry-run by
     default and requiring an explicit EVM signer signature.
-11. The verifier package also has a signer CLI that derives the verifier digest
+12. The verifier package also has a signer CLI that derives the verifier digest
     with `cast call hashIntent(...)` and signs it with a separate
     `EVM_INTENT_PRIVATE_KEY`, keeping the paper wallet free of EVM keys.
 
@@ -98,7 +106,7 @@ Program re-exploration and port mapping:
 | Zcash/Sapling reference | Solana/ZOLana port | Current implementation |
 |-------------------------|--------------------|------------------------|
 | Offline paper wallet entropy and printable recovery | Solana keypair paper wallet with browser-local entropy | `paper/`, `dark-wallet/src/components/wallet/PaperWallet.tsx` |
-| Sapling notes and commitments | Durable wallet receipts, note-like commitments, nullifier-ready intent data | `dark-wallet/src/sdk/private-payment.ts`, `dark-protocol/sdk/typescript/src/intent.ts` |
+| Sapling notes and commitments | Durable wallet receipts, local note ledger, note-like commitments, nullifier-ready intent data | `dark-wallet/src/sdk/private-payment.ts`, `dark-wallet/src/sdk/shielded-ledger.ts`, `dark-protocol/sdk/typescript/src/intent.ts` |
 | Shielded transaction metadata discipline | Wallet-signed Solana Memo intent anchors on devnet/mainnet-beta | `dark-wallet/src/sdk/dark-protocol.ts` |
 | Viewing/spending separation | Public-only agent review plus local secret-key custody | `dark-wallet/src/utils/dark-clawd-agent.ts` |
 | Cross-domain proof handoff | EIP-712-style EVM intent proof and consume-once verifier | `dark-protocol/evm-verifier/` |

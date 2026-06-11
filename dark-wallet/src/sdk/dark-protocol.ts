@@ -8,6 +8,17 @@ import { AnchorProvider } from '@coral-xyz/anchor';
 import { Buffer } from 'buffer';
 import bs58 from 'bs58';
 import type { PrivatePaymentReceipt } from './private-payment';
+import {
+  getShieldedBalanceLamports,
+  getShieldedBalanceSol,
+  getShieldedLedgerEntries,
+  hasShieldedBalance,
+  lamportsToSol,
+  recordShieldedLedgerEntry,
+} from './shielded-ledger';
+import type { DarkShieldedLedgerEntry, DarkShieldedLedgerAction, DarkShieldedLedgerDirection } from './shielded-ledger';
+
+export type { DarkShieldedLedgerEntry } from './shielded-ledger';
 
 // Dark Protocol Program ID on Devnet
 export const DARK_PROTOCOL_PROGRAM_ID = new PublicKey('Frf98UwzjLqiFUTNVY8kEdZsUW3xCuuSm8MSayBSmk4X');
@@ -80,6 +91,14 @@ export class DarkProtocolClient {
     return BigInt(Math.round(amount * 1_000_000_000)).toString();
   }
 
+  private ownerAddress(): string {
+    if (!this.wallet.publicKey) {
+      throw new Error('Wallet not connected');
+    }
+
+    return this.wallet.publicKey.toBase58();
+  }
+
   private stableHex(input: string, bytes = 32): string {
     const output = new Uint8Array(bytes);
     let h1 = 0x811c9dc5;
@@ -110,6 +129,51 @@ export class DarkProtocolClient {
 
   private createCommitment(action: DarkIntentAction, fields: string[]): string {
     return `0x${this.stableHex([action, ...fields, Date.now().toString()].join('|'))}`;
+  }
+
+  private createNullifier(action: DarkIntentAction, fields: string[]): string {
+    return `0x${this.stableHex(['nullifier', action, ...fields].join('|'))}`;
+  }
+
+  private requireShieldedBalance(amountLamports: string, action: DarkShieldedLedgerAction): void {
+    const owner = this.ownerAddress();
+    if (hasShieldedBalance(owner, amountLamports)) {
+      return;
+    }
+
+    const available = lamportsToSol(getShieldedBalanceLamports(owner)).toFixed(4);
+    const requested = lamportsToSol(amountLamports).toFixed(4);
+    throw new Error(
+      `Insufficient local shielded note balance for ${action}. Available ${available} SOL, requested ${requested} SOL.`,
+    );
+  }
+
+  private recordShieldedIntent(params: {
+    action: DarkShieldedLedgerAction;
+    direction: DarkShieldedLedgerDirection;
+    amountLamports: string;
+    commitment: string;
+    createdAt: number;
+    signature: string;
+    memoHash?: string;
+    recipient?: string;
+    shieldedAddress?: string;
+    nullifier?: string;
+  }): void {
+    recordShieldedLedgerEntry({
+      id: `${params.signature}:${params.action}:${params.commitment}`,
+      owner: this.ownerAddress(),
+      action: params.action,
+      direction: params.direction,
+      amountLamports: params.amountLamports,
+      commitment: params.commitment,
+      createdAt: params.createdAt,
+      signature: params.signature,
+      memoHash: params.memoHash,
+      recipient: params.recipient,
+      shieldedAddress: params.shieldedAddress,
+      nullifier: params.nullifier,
+    });
   }
 
   private parseDarkIntentPayload(raw: string): DarkIntentPayload | null {
@@ -229,22 +293,36 @@ export class DarkProtocolClient {
     }
 
     const amountLamports = this.amountToLamports(amount);
+    const createdAt = Date.now();
+    const memoHash = this.memoHash(memo);
     const commitment = this.createCommitment('shield', [
       this.wallet.publicKey.toBase58(),
       amountLamports,
       memo ?? '',
     ]);
 
-    return this.sendIntent({
+    const signature = await this.sendIntent({
       protocol: 'zolana.dark',
       version: 1,
       action: 'shield',
       payer: this.wallet.publicKey.toBase58(),
       amountLamports,
       commitment,
-      createdAt: Date.now(),
-      memoHash: this.memoHash(memo),
+      createdAt,
+      memoHash,
     });
+
+    this.recordShieldedIntent({
+      action: 'shield',
+      direction: 'credit',
+      amountLamports,
+      commitment,
+      createdAt,
+      signature,
+      memoHash,
+    });
+
+    return signature;
   }
 
   /**
@@ -257,13 +335,15 @@ export class DarkProtocolClient {
 
     const recipientAddress = recipient || this.wallet.publicKey;
     const amountLamports = this.amountToLamports(amount);
+    this.requireShieldedBalance(amountLamports, 'unshield');
+    const createdAt = Date.now();
     const commitment = this.createCommitment('unshield', [
       this.wallet.publicKey.toBase58(),
       recipientAddress.toBase58(),
       amountLamports,
     ]);
 
-    return this.sendIntent({
+    const signature = await this.sendIntent({
       protocol: 'zolana.dark',
       version: 1,
       action: 'unshield',
@@ -271,8 +351,26 @@ export class DarkProtocolClient {
       recipient: recipientAddress.toBase58(),
       amountLamports,
       commitment,
-      createdAt: Date.now(),
+      createdAt,
     });
+
+    this.recordShieldedIntent({
+      action: 'unshield',
+      direction: 'debit',
+      amountLamports,
+      commitment,
+      createdAt,
+      signature,
+      recipient: recipientAddress.toBase58(),
+      nullifier: this.createNullifier('unshield', [
+        this.wallet.publicKey.toBase58(),
+        recipientAddress.toBase58(),
+        amountLamports,
+        signature,
+      ]),
+    });
+
+    return signature;
   }
 
   /**
@@ -293,6 +391,9 @@ export class DarkProtocolClient {
     }
 
     const amountLamports = this.amountToLamports(amount);
+    this.requireShieldedBalance(amountLamports, 'private_transfer');
+    const createdAt = Date.now();
+    const memoHash = this.memoHash(memo);
     const commitment = this.createCommitment('private_transfer', [
       this.wallet.publicKey.toBase58(),
       recipientAddress,
@@ -300,7 +401,7 @@ export class DarkProtocolClient {
       memo ?? '',
     ]);
 
-    return this.sendIntent({
+    const signature = await this.sendIntent({
       protocol: 'zolana.dark',
       version: 1,
       action: 'private_transfer',
@@ -308,9 +409,28 @@ export class DarkProtocolClient {
       shieldedAddress: recipientAddress,
       amountLamports,
       commitment,
-      createdAt: Date.now(),
-      memoHash: this.memoHash(memo),
+      createdAt,
+      memoHash,
     });
+
+    this.recordShieldedIntent({
+      action: 'private_transfer',
+      direction: 'debit',
+      amountLamports,
+      commitment,
+      createdAt,
+      signature,
+      memoHash,
+      shieldedAddress: recipientAddress,
+      nullifier: this.createNullifier('private_transfer', [
+        this.wallet.publicKey.toBase58(),
+        recipientAddress,
+        amountLamports,
+        signature,
+      ]),
+    });
+
+    return signature;
   }
 
   async anchorPrivatePayment(receipt: PrivatePaymentReceipt): Promise<string> {
@@ -412,11 +532,15 @@ export class DarkProtocolClient {
       return 0;
     }
 
-    // TODO: Implement actual note scanning
-    console.log('Scanning for shielded notes...');
+    return getShieldedBalanceSol(this.wallet.publicKey.toBase58());
+  }
 
-    // For now, return 0
-    return 0;
+  getShieldedNotes(): DarkShieldedLedgerEntry[] {
+    if (!this.wallet.publicKey) {
+      return [];
+    }
+
+    return getShieldedLedgerEntries(this.wallet.publicKey.toBase58());
   }
 
   /**
@@ -440,12 +564,29 @@ export class DarkProtocolClient {
    * Generate a new shielded address
    */
   async generateShieldedAddress(): Promise<string> {
-    // TODO: Implement proper Sapling address generation
-    // For now, generate a mock zs1 address
-    const randomHex = Array.from({ length: 43 }, () =>
-      Math.floor(Math.random() * 16).toString(16)
-    ).join('');
-    return `zs1${randomHex}`;
+    const crypto = globalThis.crypto;
+    if (!crypto?.getRandomValues) {
+      throw new Error('Secure browser entropy is required to generate a ZOLana shielded address');
+    }
+
+    const random = new Uint8Array(48);
+    crypto.getRandomValues(random);
+
+    const owner = this.wallet.publicKey?.toBase58?.() ?? 'offline';
+    const label = new TextEncoder().encode(`zolana-shielded-address|${owner}|${Date.now()}`);
+    const material = new Uint8Array(random.length + label.length);
+    material.set(random);
+    material.set(label, random.length);
+
+    if (crypto.subtle?.digest) {
+      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', material));
+      const addressMaterial = new Uint8Array(random.length + digest.length);
+      addressMaterial.set(random);
+      addressMaterial.set(digest, random.length);
+      return `zsol1${bs58.encode(addressMaterial).slice(0, 72)}`;
+    }
+
+    return `zsol1${bs58.encode(material).slice(0, 72)}`;
   }
 }
 

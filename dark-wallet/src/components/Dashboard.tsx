@@ -7,6 +7,7 @@ import PrivateTransfer from './wallet/PrivateTransfer';
 import PaperWallet from './wallet/PaperWallet';
 import HeliusViz from './HeliusViz';
 import { formatNetworkLabel, getDarkRuntimeConfig } from '../utils/runtime';
+import { getShieldedBalanceSol, SHIELDED_LEDGER_EVENT } from '../sdk/shielded-ledger';
 
 type WalletTab = 'shield' | 'unshield' | 'transfer' | 'paper' | 'helius';
 
@@ -24,7 +25,7 @@ const Dashboard: React.FC = () => {
   const runtime = useMemo(() => getDarkRuntimeConfig(), []);
   const [activeTab, setActiveTab] = useState<WalletTab>('paper');
   const [balance, setBalance] = useState<number>(0);
-  const [shieldedBalance] = useState<number>(0);
+  const [shieldedBalance, setShieldedBalance] = useState<number>(0);
   const [slot, setSlot] = useState<number | null>(null);
 
   useEffect(() => {
@@ -38,8 +39,10 @@ const Dashboard: React.FC = () => {
         if (publicKey) {
           const lamports = await connection.getBalance(publicKey);
           if (isMounted) setBalance(lamports / LAMPORTS_PER_SOL);
+          if (isMounted) setShieldedBalance(getShieldedBalanceSol(publicKey.toBase58()));
         } else if (isMounted) {
           setBalance(0);
+          setShieldedBalance(0);
         }
       } catch {
         if (isMounted) setSlot(null);
@@ -53,6 +56,16 @@ const Dashboard: React.FC = () => {
       window.clearInterval(interval);
     };
   }, [publicKey, connection]);
+
+  useEffect(() => {
+    function syncShieldedLedger() {
+      setShieldedBalance(publicKey ? getShieldedBalanceSol(publicKey.toBase58()) : 0);
+    }
+
+    syncShieldedLedger();
+    window.addEventListener(SHIELDED_LEDGER_EVENT, syncShieldedLedger);
+    return () => window.removeEventListener(SHIELDED_LEDGER_EVENT, syncShieldedLedger);
+  }, [publicKey]);
 
   const activeTone = tabs.find((tab) => tab.id === activeTab)?.tone ?? tabs[0].tone;
 

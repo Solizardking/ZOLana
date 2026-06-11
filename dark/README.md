@@ -8,7 +8,7 @@ source trees.
 
 | Surface | Canonical implementation | Purpose |
 |---------|--------------------------|---------|
-| `dark-wallet/` | `../dark-wallet/` | Browser wallet, Solana paper wallet, private-payment receipts, rail exports |
+| `dark-wallet/` | `../dark-wallet/` | Browser wallet, Solana paper wallet, local shielded note ledger, private-payment receipts, rail exports |
 | `dark-agent/` | `../dark-wallet/src/utils/dark-clawd-agent.ts`, `../dark-protocol/sdk/typescript/src/ai-agent.ts`, `../dark-protocol/rail-worker/` | xAI sidecar, policy review, x402/AP2/M2M rail handoff |
 | `dark-defi/` | `../dark-protocol/`, `../darkswap/` | Shield/unshield, private transfer, Jupiter routes, DeFi intent plumbing |
 | `dark-swap/` | `../darkswap/`, `../dark-protocol/sdk/typescript/` | Swap routing and private-swap SDK integration |
@@ -25,10 +25,15 @@ the Zcash/Sapling paper-wallet workflow into Solana/SVM execution:
 3. Shield, unshield, private transfer, and private-payment actions anchor
    intent envelopes as wallet-signed Solana Memo transactions on devnet or
    mainnet-beta.
-4. `dark-protocol/` carries the Sapling-inspired model forward with notes,
+4. The wallet records successful shield anchors as local note credits, and
+   records unshield/private-transfer anchors as local note debits with
+   nullifier-like records. This is the durable browser-side bridge from the
+   Sapling note model to the SVM intent rail while the full on-chain verifier
+   and note scanner are finalized.
+5. `dark-protocol/` carries the Sapling-inspired model forward with notes,
    commitments, nullifiers, encrypted memo concepts, EVM intent proofs, and
    Solana program surfaces.
-5. `rail-worker/` validates exported x402/AP2/M2M authorizations, checks expiry
+6. `rail-worker/` validates exported x402/AP2/M2M authorizations, checks expiry
    and replay keys, then either returns `intent-only` or forwards to a configured
    live backend.
 
@@ -65,10 +70,11 @@ M2M_SETTLEMENT_URL=
 ## Settlement Boundary
 
 The current implementation is production-shaped but honest about settlement.
-Solana Memo anchors, durable receipts, rail authorization exports, direct wallet
-submission to the rail worker, independent worker-side Solana Memo verification,
-EVM verifier tests, dry-run-first EVM proof signing and relay scripts, durable rail-worker
-replay/settlement state, and backend adapter hooks exist. A live x402
+Solana Memo anchors, durable local shielded-note state, durable receipts, rail
+authorization exports, direct wallet submission to the rail worker, independent
+worker-side Solana Memo verification, EVM verifier tests, dry-run-first EVM proof
+signing and relay scripts, durable rail-worker replay/settlement state, and
+backend adapter hooks exist. A live x402
 facilitator, AP2 mandate runner, or M2M settlement backend must be supplied
 through the env vars above before the system should claim final payment
 settlement.

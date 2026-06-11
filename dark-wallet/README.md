@@ -5,9 +5,12 @@ wallet generation, and agent-reviewed private payment staging.
 
 ## Current Surfaces
 
-- `Shield` - anchors a shield commitment as a Solana Memo transaction.
-- `Unshield` - anchors an unshield commitment for a transparent recipient.
-- `Private Transfer` - anchors shielded-address transfer commitments.
+- `Shield` - anchors a shield commitment as a Solana Memo transaction and
+  credits the browser-local shielded note ledger.
+- `Unshield` - anchors an unshield commitment for a transparent recipient and
+  debits local shielded notes.
+- `Private Transfer` - anchors shielded-address transfer commitments and debits
+  local shielded notes with nullifier-like records.
 - `Paper Wallet` - generates a local Solana paper wallet without needing an
   injected wallet or RPC connection.
 
@@ -97,6 +100,19 @@ re-reads the chain to prove the Memo intent still matches that receipt. The
 connected wallet pays the normal transaction fee and the configured RPC path
 (`HELIUS_RPC_URL`, `HELIUS_API_KEY`, or `SOLANA_RPC_URL`) submits it on devnet
 or mainnet-beta.
+
+## Local Shielded Note Ledger
+
+`src/sdk/shielded-ledger.ts` stores a sanitized browser-local ledger under
+`zolana.dark.shielded-ledger.v1`. Successful shield anchors create credit
+entries with amount, commitment, owner, signature, and optional memo hash.
+Successful unshield and private-transfer anchors create debit entries with
+nullifier-like identifiers. The dashboard, unshield screen, and private-transfer
+screen read this ledger instead of showing a hard-coded zero balance.
+
+The ledger is intentionally local state for the current browser profile. It does
+not replace the final on-chain note scanner or ZK nullifier set, and it does not
+store paper-wallet secret material or plaintext private memos.
 
 No SOL is transferred into a placeholder custody account by these intent
 transactions. They are durable SVM anchors for the privacy workflow while the

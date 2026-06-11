@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { createDarkProtocolClient } from '../../sdk/dark-protocol';
+import { createDarkProtocolClient, isValidShieldedAddress } from '../../sdk/dark-protocol';
+import { SHIELDED_LEDGER_EVENT } from '../../sdk/shielded-ledger';
 
 const PrivateTransfer: React.FC = () => {
   const wallet = useWallet();
@@ -11,6 +12,37 @@ const PrivateTransfer: React.FC = () => {
   const [memo, setMemo] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [shieldedBalance, setShieldedBalance] = useState(0);
+  const [noteCount, setNoteCount] = useState(0);
+  const requestedAmount = Number.parseFloat(amount) || 0;
+  const hasInsufficientBalance = requestedAmount > shieldedBalance;
+
+  const syncShieldedLedger = () => {
+    if (!publicKey) {
+      setShieldedBalance(0);
+      setNoteCount(0);
+      return;
+    }
+
+    const darkClient = createDarkProtocolClient(connection, wallet);
+    void darkClient.getShieldedBalance().then(setShieldedBalance);
+    setNoteCount(darkClient.getShieldedNotes().length);
+  };
+
+  useEffect(() => {
+    syncShieldedLedger();
+    window.addEventListener(SHIELDED_LEDGER_EVENT, syncShieldedLedger);
+    return () => window.removeEventListener(SHIELDED_LEDGER_EVENT, syncShieldedLedger);
+  }, [publicKey, connection]);
+
+  const handleGenerateAddress = async () => {
+    try {
+      const darkClient = createDarkProtocolClient(connection, wallet);
+      setRecipientAddress(await darkClient.generateShieldedAddress());
+    } catch (error: any) {
+      setStatus(`Error: ${error.message}`);
+    }
+  };
 
   const handleTransfer = async () => {
     if (!publicKey) {
@@ -18,8 +50,8 @@ const PrivateTransfer: React.FC = () => {
       return;
     }
 
-    if (!recipientAddress.startsWith('zs1') && !recipientAddress.startsWith('zsol1')) {
-      alert('Please enter a valid shielded address (starts with zs1 or zsol1)');
+    if (!isValidShieldedAddress(recipientAddress)) {
+      alert('Please enter a valid shielded address (zs1 or zsol1)');
       return;
     }
 
@@ -64,8 +96,11 @@ const PrivateTransfer: React.FC = () => {
         <div className="bg-pink-500/10 border border-pink-500/30 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-400">Available for Transfer:</span>
-            <span className="text-2xl font-bold text-pink-400">0.0000 SOL</span>
+            <span className="text-2xl font-bold text-pink-400">{shieldedBalance.toFixed(4)} SOL</span>
           </div>
+          <p className="text-xs text-gray-500 mt-2">
+            {noteCount} local shielded ledger {noteCount === 1 ? 'entry' : 'entries'}
+          </p>
         </div>
 
         <div>
@@ -83,6 +118,14 @@ const PrivateTransfer: React.FC = () => {
           <p className="mt-1 text-xs text-gray-500">
             Must be a Sapling-style shielded address (zs1) or ZOLana shielded address (zsol1)
           </p>
+          <button
+            type="button"
+            onClick={handleGenerateAddress}
+            disabled={isLoading}
+            className="mt-3 text-xs text-pink-300 hover:text-pink-200 disabled:opacity-50"
+          >
+            Generate local zsol1 recipient address
+          </button>
         </div>
 
         <div>
@@ -120,7 +163,7 @@ const PrivateTransfer: React.FC = () => {
 
         <button
           onClick={handleTransfer}
-          disabled={!publicKey || isLoading || parseFloat(amount) <= 0 || !recipientAddress}
+          disabled={!publicKey || isLoading || requestedAmount <= 0 || !recipientAddress || hasInsufficientBalance}
           className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
           {isLoading ? (
@@ -135,6 +178,12 @@ const PrivateTransfer: React.FC = () => {
             `Anchor Private Intent for ${amount} SOL`
           )}
         </button>
+
+        {hasInsufficientBalance && requestedAmount > 0 && (
+          <p className="text-xs text-amber-300">
+            Requested amount exceeds this browser's local shielded note balance.
+          </p>
+        )}
 
         {status && (
           <div className={`p-4 rounded-lg ${

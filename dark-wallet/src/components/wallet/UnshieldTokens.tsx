@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { createDarkProtocolClient } from '../../sdk/dark-protocol';
+import { SHIELDED_LEDGER_EVENT } from '../../sdk/shielded-ledger';
 
 const UnshieldTokens: React.FC = () => {
   const wallet = useWallet();
@@ -11,6 +12,28 @@ const UnshieldTokens: React.FC = () => {
   const [recipient, setRecipient] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [shieldedBalance, setShieldedBalance] = useState(0);
+  const [noteCount, setNoteCount] = useState(0);
+  const requestedAmount = Number.parseFloat(amount) || 0;
+  const hasInsufficientBalance = requestedAmount > shieldedBalance;
+
+  const syncShieldedLedger = () => {
+    if (!publicKey) {
+      setShieldedBalance(0);
+      setNoteCount(0);
+      return;
+    }
+
+    const darkClient = createDarkProtocolClient(connection, wallet);
+    void darkClient.getShieldedBalance().then(setShieldedBalance);
+    setNoteCount(darkClient.getShieldedNotes().length);
+  };
+
+  useEffect(() => {
+    syncShieldedLedger();
+    window.addEventListener(SHIELDED_LEDGER_EVENT, syncShieldedLedger);
+    return () => window.removeEventListener(SHIELDED_LEDGER_EVENT, syncShieldedLedger);
+  }, [publicKey, connection]);
 
   const handleUnshield = async () => {
     if (!publicKey) {
@@ -64,10 +87,12 @@ const UnshieldTokens: React.FC = () => {
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-400">Shielded Balance:</span>
-            <span className="text-2xl font-bold text-emerald-400">0.0000 SOL</span>
+            <span className="text-2xl font-bold text-emerald-400">{shieldedBalance.toFixed(4)} SOL</span>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            No shielded notes found. Shield some tokens first!
+            {noteCount > 0
+              ? `${noteCount} local ledger ${noteCount === 1 ? 'entry' : 'entries'} available for debit`
+              : 'No local shielded notes found. Shield some tokens first.'}
           </p>
         </div>
 
@@ -106,7 +131,7 @@ const UnshieldTokens: React.FC = () => {
 
         <button
           onClick={handleUnshield}
-          disabled={!publicKey || isLoading || parseFloat(amount) <= 0}
+          disabled={!publicKey || isLoading || requestedAmount <= 0 || hasInsufficientBalance}
           className="btn-secondary w-full disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
@@ -121,6 +146,12 @@ const UnshieldTokens: React.FC = () => {
             `Anchor Unshield Intent for ${amount} SOL`
           )}
         </button>
+
+        {hasInsufficientBalance && requestedAmount > 0 && (
+          <p className="text-xs text-amber-300">
+            Requested amount exceeds this browser's local shielded note balance.
+          </p>
+        )}
 
         {status && (
           <div className={`p-4 rounded-lg ${

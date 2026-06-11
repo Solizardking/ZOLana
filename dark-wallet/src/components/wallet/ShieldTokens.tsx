@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { createDarkProtocolClient } from '../../sdk/dark-protocol';
+import { SHIELDED_LEDGER_EVENT } from '../../sdk/shielded-ledger';
 
 const ShieldTokens: React.FC = () => {
   const wallet = useWallet();
@@ -10,6 +11,26 @@ const ShieldTokens: React.FC = () => {
   const [memo, setMemo] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [shieldedBalance, setShieldedBalance] = useState(0);
+  const [noteCount, setNoteCount] = useState(0);
+
+  const syncShieldedLedger = () => {
+    if (!publicKey) {
+      setShieldedBalance(0);
+      setNoteCount(0);
+      return;
+    }
+
+    const darkClient = createDarkProtocolClient(connection, wallet);
+    void darkClient.getShieldedBalance().then(setShieldedBalance);
+    setNoteCount(darkClient.getShieldedNotes().length);
+  };
+
+  useEffect(() => {
+    syncShieldedLedger();
+    window.addEventListener(SHIELDED_LEDGER_EVENT, syncShieldedLedger);
+    return () => window.removeEventListener(SHIELDED_LEDGER_EVENT, syncShieldedLedger);
+  }, [publicKey, connection]);
 
   const handleShield = async () => {
     if (!publicKey) {
@@ -50,6 +71,16 @@ const ShieldTokens: React.FC = () => {
       </div>
 
       <div className="space-y-4">
+        <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-gray-400">Local Shielded Notes:</span>
+            <span className="text-2xl font-bold text-purple-300">{shieldedBalance.toFixed(4)} SOL</span>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            {noteCount} anchored ledger {noteCount === 1 ? 'entry' : 'entries'} on this browser profile
+          </p>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Amount (SOL)
