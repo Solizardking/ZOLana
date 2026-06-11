@@ -203,6 +203,17 @@ export function createSolanaVerificationConfig(env = process.env) {
   };
 }
 
+export function createAgentConfig(env = process.env) {
+  const temperature = Number.parseFloat(env.XAI_TEMPERATURE ?? '0.2');
+  const baseUrl = (env.XAI_BASE_URL ?? 'https://api.x.ai/v1').replace(/\/+$/, '');
+  return {
+    apiKey: env.XAI_API_KEY ?? '',
+    baseUrl,
+    model: env.XAI_MODEL ?? 'grok-4.20-beta-latest-non-reasoning',
+    temperature: Number.isFinite(temperature) ? temperature : 0.2,
+  };
+}
+
 export function stableDigest(value) {
   return `0x${createHash('sha256').update(value).digest('hex')}`;
 }
@@ -228,6 +239,318 @@ export function stableHex(input, bytes = 32) {
   }
 
   return Array.from(output, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function clampText(value, fallback = '', max = 240) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  return (text || fallback).slice(0, max);
+}
+
+function normalizeRail(value) {
+  return VALID_RAILS.has(value) ? value : 'x402';
+}
+
+function normalizeSettlement(value) {
+  return value === 'evm' ? 'evm' : 'solana';
+}
+
+function normalizeProofLayer(value) {
+  return value === 'solana' ? 'solana' : 'evm';
+}
+
+function normalizeNetwork(value) {
+  return value === 'mainnet-beta' ? 'mainnet-beta' : 'devnet';
+}
+
+function contextFromProofPayload(proofPayload, railAuthorization, env = process.env) {
+  if (!proofPayload || typeof proofPayload !== 'object') {
+    return undefined;
+  }
+
+  return {
+    network: proofPayload.solanaAnchor?.cluster ?? env.SOLANA_CLUSTER ?? 'devnet',
+    amountSol: Number(proofPayload.amountLamports ?? '0') / 1_000_000_000,
+    recipientFingerprint: proofPayload.recipient
+      ? `${String(proofPayload.recipient).slice(0, 4)}...${String(proofPayload.recipient).slice(-4)}#${stableHex(String(proofPayload.recipient), 4)}`
+      : 'private-counterparty',
+    memoFingerprint: proofPayload.memoHash && proofPayload.memoHash !== '0x'
+      ? `${String(proofPayload.memoHash).slice(0, 10)}...${String(proofPayload.memoHash).slice(-6)}`
+      : undefined,
+    rail: proofPayload.rail,
+    settlement: proofPayload.settlement,
+    proofLayer: proofPayload.proofLayer,
+    durableReceipt: proofPayload.durableReceipt,
+    heliusConfigured: Boolean(resolveSolanaRpcUrl(env)),
+    evmChainId: proofPayload.evmIntentProof?.eip712?.domain?.chainId ?? Number.parseInt(env.EVM_CHAIN_ID ?? '1', 10),
+    evmVerifierConfigured: Boolean(
+      proofPayload.evmIntentProof?.eip712?.domain?.verifyingContract || env.EVM_PRIVATE_PAYMENT_VERIFIER,
+    ),
+    railWorkerConfigured: true,
+    hasSolanaAnchor: Boolean(proofPayload.solanaAnchor?.signature),
+    solanaAnchorVerified: Boolean(proofPayload.solanaVerification?.memoMatched || railAuthorization?.solanaVerifiedSlot),
+    railWorkerMode: proofPayload.railWorker?.mode,
+    railWorkerSettlementStatus: proofPayload.railWorker?.settlementStatus,
+  };
+}
+
+export function sanitizeRailPlanContext(body = {}, env = process.env) {
+  const source = body.context && typeof body.context === 'object'
+    ? body.context
+    : contextFromProofPayload(body.proofPayload, body.railAuthorization, env) ?? body;
+
+  const amountSol = Number(source.amountSol);
+  const evmChainId = Number.parseInt(String(source.evmChainId ?? env.EVM_CHAIN_ID ?? '1'), 10);
+
+  return {
+    network: normalizeNetwork(source.network ?? env.SOLANA_CLUSTER),
+    amountSol: Number.isFinite(amountSol) && amountSol > 0 ? amountSol : 0,
+    recipientFingerprint: clampText(source.recipientFingerprint, 'private-counterparty'),
+    memoFingerprint: source.memoFingerprint ? clampText(source.memoFingerprint, '', 160) : undefined,
+    rail: normalizeRail(source.rail),
+    settlement: normalizeSettlement(source.settlement),
+    proofLayer: normalizeProofLayer(source.proofLayer),
+    durableReceipt: source.durableReceipt === true,
+    heliusConfigured: Boolean(resolveSolanaRpcUrl(env) || source.heliusConfigured),
+    evmChainId: Number.isFinite(evmChainId) ? evmChainId : 1,
+    evmVerifierConfigured: Boolean(env.EVM_PRIVATE_PAYMENT_VERIFIER || source.evmVerifierConfigured),
+    railWorkerConfigured: true,
+    hasSolanaAnchor: source.hasSolanaAnchor === true,
+    solanaAnchorVerified: source.solanaAnchorVerified === true,
+    railWorkerMode: clampText(source.railWorkerMode, '', 40) || undefined,
+    railWorkerSettlementStatus: clampText(source.railWorkerSettlementStatus, '', 80) || undefined,
+    operatorPrompt: source.operatorPrompt
+      ? `operator-note#${stableHex(clampText(source.operatorPrompt, '', 500), 6)}`
+      : undefined,
+  };
+}
+
+function scoreRailPlan(actionItems, cautions) {
+  if (actionItems.length >= 3 || cautions.some(caution => caution.includes('Do not submit'))) {
+    return 'high';
+  }
+
+  if (actionItems.length > 0 || cautions.length > 1) {
+    return 'medium';
+  }
+
+  return 'low';
+}
+
+export function createDarkClawdRailPlan(context) {
+  const actionItems = [];
+  const cautions = [];
+  let recommendedRail = context.rail;
+  let recommendedSettlement = context.settlement;
+  let recommendedProofLayer = context.proofLayer;
+
+  if (!context.durableReceipt) {
+    actionItems.push('Enable durable non-ephemeral receipt storage before anchoring or exporting rail auth.');
+  }
+
+  if (!context.heliusConfigured) {
+    actionItems.push('Configure HELIUS_RPC_URL or HELIUS_API_KEY before mainnet-beta use.');
+  }
+
+  if (!context.hasSolanaAnchor) {
+    actionItems.push('Anchor the receipt as a wallet-signed Solana Memo before rail submission.');
+  } else if (!context.solanaAnchorVerified) {
+    actionItems.push('Verify the Solana Memo anchor before EVM proof signing or rail-worker submission.');
+  }
+
+  if (!context.railWorkerConfigured) {
+    actionItems.push('Set RAIL_WORKER_URL for direct x402/AP2/M2M authorization submission.');
+  }
+
+  if (!context.evmVerifierConfigured) {
+    actionItems.push('Set EVM_PRIVATE_PAYMENT_VERIFIER before relying on EVM consume-once intent proofing.');
+  }
+
+  if (context.amountSol >= 1 || context.network === 'mainnet-beta') {
+    recommendedProofLayer = 'evm';
+    recommendedSettlement = 'evm';
+    recommendedRail = context.rail === 'x402' ? 'ap2' : context.rail;
+    cautions.push('High-value or mainnet flow should use AP2/M2M-style mandates plus EVM consume-once proofing.');
+  }
+
+  if (context.amountSol < 0.05 && context.network !== 'mainnet-beta') {
+    recommendedRail = 'x402';
+    recommendedSettlement = 'solana';
+    cautions.push('Small devnet test flow can stay on x402/Solana intent mode until backend settlement is configured.');
+  }
+
+  if (context.rail === 'm2m' && !context.railWorkerConfigured) {
+    cautions.push('Do not submit M2M sessions without a reachable rail worker and replay ledger.');
+  }
+
+  if (context.settlement === 'evm' && !context.evmVerifierConfigured) {
+    cautions.push('EVM settlement/proof mode is incomplete until the verifier contract address is configured.');
+  }
+
+  if (context.railWorkerMode === 'intent-only') {
+    cautions.push('Rail worker is in intent-only mode; this proves authorization but does not claim final settlement.');
+  }
+
+  if (context.railWorkerSettlementStatus && context.railWorkerSettlementStatus !== 'settled') {
+    cautions.push(`Rail settlement status is ${context.railWorkerSettlementStatus}; keep the receipt queued.`);
+  }
+
+  if (actionItems.length === 0) {
+    actionItems.push('Proceed: stage receipt, anchor on Solana, verify Memo, export/sign EVM proof, then submit rail auth.');
+  }
+
+  return {
+    recommendedRail,
+    recommendedSettlement,
+    recommendedProofLayer,
+    requireDurableReceipt: true,
+    risk: scoreRailPlan(actionItems, cautions),
+    summary: `Use ${recommendedRail.toUpperCase()} with ${recommendedSettlement.toUpperCase()} settlement and ${recommendedProofLayer.toUpperCase()} proofing on ${context.network}.`,
+    actionItems,
+    cautions,
+  };
+}
+
+function formatRailPlan(plan) {
+  return [
+    `Risk: ${plan.risk.toUpperCase()}`,
+    plan.summary,
+    `Recommended: rail=${plan.recommendedRail}, settlement=${plan.recommendedSettlement}, proof=${plan.recommendedProofLayer}, durable=${plan.requireDurableReceipt ? 'yes' : 'no'}`,
+    '',
+    'Action items:',
+    ...plan.actionItems.map(item => `- ${item}`),
+    '',
+    'Cautions:',
+    ...(plan.cautions.length > 0 ? plan.cautions.map(item => `- ${item}`) : ['- No additional cautions from deterministic policy.']),
+  ].join('\n');
+}
+
+function buildAgentRailPlanPrompt(context, plan) {
+  return [
+    'You are Dark Clawd, the server-side agentic policy sidecar for a Solana privacy wallet.',
+    'Review only public/private-payment metadata. Never request or infer secret keys, seed phrases, full paper-wallet JSON, or plaintext private memos.',
+    'The deterministic policy has already produced this plan; critique it and add operational guidance.',
+    '',
+    `Network: ${context.network}`,
+    `Amount SOL: ${context.amountSol}`,
+    `Recipient fingerprint: ${context.recipientFingerprint}`,
+    context.memoFingerprint ? `Memo fingerprint: ${context.memoFingerprint}` : '',
+    `Selected rail: ${context.rail}`,
+    `Selected settlement: ${context.settlement}`,
+    `Selected proof layer: ${context.proofLayer}`,
+    `Durable receipt: ${context.durableReceipt ? 'yes' : 'no'}`,
+    `Helius configured: ${context.heliusConfigured ? 'yes' : 'no'}`,
+    `EVM chain ID: ${context.evmChainId}`,
+    `EVM verifier configured: ${context.evmVerifierConfigured ? 'yes' : 'no'}`,
+    `Rail worker configured: ${context.railWorkerConfigured ? 'yes' : 'no'}`,
+    `Solana anchor exists: ${context.hasSolanaAnchor ? 'yes' : 'no'}`,
+    `Solana anchor verified: ${context.solanaAnchorVerified ? 'yes' : 'no'}`,
+    context.railWorkerMode ? `Rail worker mode: ${context.railWorkerMode}` : '',
+    context.railWorkerSettlementStatus ? `Rail settlement status: ${context.railWorkerSettlementStatus}` : '',
+    context.operatorPrompt ? `Operator note fingerprint: ${context.operatorPrompt}` : '',
+    '',
+    'Deterministic plan:',
+    formatRailPlan(plan),
+    '',
+    'Return exactly:',
+    '1. Go/no-go decision.',
+    '2. Best rail choice and why.',
+    '3. Next three steps for Solana anchor, EVM intent proof, and x402/AP2/M2M handoff.',
+  ].filter(Boolean).join('\n');
+}
+
+async function callDarkClawdAgent(prompt, config, fetchImpl = globalThis.fetch) {
+  if (!config.apiKey) {
+    return {
+      ok: true,
+      skipped: true,
+      reason: 'XAI_API_KEY is not configured on the rail worker',
+    };
+  }
+
+  if (typeof fetchImpl !== 'function') {
+    return {
+      ok: false,
+      skipped: false,
+      error: 'fetch is unavailable for xAI agent review',
+    };
+  }
+
+  try {
+    const response = await fetchImpl(`${config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        temperature: config.temperature,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = {};
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        skipped: false,
+        status: response.status,
+        error: payload.error?.message ?? payload.message ?? `xAI request failed with HTTP ${response.status}`,
+      };
+    }
+
+    return {
+      ok: true,
+      skipped: false,
+      status: response.status,
+      content: payload.choices?.[0]?.message?.content?.trim() ?? '',
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      skipped: false,
+      error: error.message,
+    };
+  }
+}
+
+export async function processAgentRailPlan(body, options = {}) {
+  const env = options.env ?? process.env;
+  const agentConfig = options.agentConfig ?? createAgentConfig(env);
+  const context = sanitizeRailPlanContext(body, env);
+  const plan = createDarkClawdRailPlan(context);
+  const prompt = buildAgentRailPlanPrompt(context, plan);
+  const promptDigest = stableDigest(prompt);
+  const agent = await callDarkClawdAgent(
+    prompt,
+    agentConfig,
+    options.fetch ?? globalThis.fetch,
+  );
+
+  return {
+    ok: true,
+    status: 200,
+    mode: agent.skipped || !agent.ok ? 'local' : 'xai',
+    service: 'dark-clawd-rail-planner',
+    agent: {
+      available: Boolean(agentConfig.apiKey),
+      model: agentConfig.model,
+      baseUrl: agentConfig.apiKey ? agentConfig.baseUrl : undefined,
+      skipped: agent.skipped,
+      error: agent.ok ? undefined : agent.error,
+    },
+    context,
+    plan,
+    modelReview: agent.ok && !agent.skipped ? agent.content : undefined,
+    promptDigest,
+    promptVersion: 1,
+  };
 }
 
 function fallbackMemoHash(proof) {

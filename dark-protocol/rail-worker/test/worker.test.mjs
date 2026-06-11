@@ -3,7 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createWorkerState, processRailRequest, stableHex, validateRailRequest } from '../src/worker.mjs';
+import {
+  createWorkerState,
+  processAgentRailPlan,
+  processRailRequest,
+  sanitizeRailPlanContext,
+  stableHex,
+  validateRailRequest,
+} from '../src/worker.mjs';
 
 function authorizationId(envelope) {
   const { authorizationId, ...withoutId } = envelope;
@@ -480,4 +487,111 @@ test('tampered replay key and m2m binding digest are rejected', async () => {
   assert.equal(result.ok, false);
   assert.equal(result.status, 400);
   assert.match(result.errors.join('\n'), /replayKey|binding digest/);
+});
+
+test('Dark Clawd rail planner returns local guardrails without xAI key', async () => {
+  const result = await processAgentRailPlan({
+    context: {
+      network: 'devnet',
+      amountSol: 0.25,
+      recipientFingerprint: 'zsol...iver#1234',
+      rail: 'x402',
+      settlement: 'solana',
+      proofLayer: 'evm',
+      durableReceipt: true,
+      hasSolanaAnchor: false,
+      solanaAnchorVerified: false,
+    },
+  }, {
+    env: {},
+    fetch: async () => {
+      throw new Error('xAI should not be called without XAI_API_KEY');
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 200);
+  assert.equal(result.mode, 'local');
+  assert.equal(result.agent.available, false);
+  assert.equal(result.plan.recommendedRail, 'x402');
+  assert.match(result.plan.actionItems.join('\n'), /Anchor the receipt/);
+  assert.match(result.plan.actionItems.join('\n'), /HELIUS_RPC_URL|HELIUS_API_KEY/);
+});
+
+test('Dark Clawd rail planner calls xAI with public-only fingerprinted prompt', async () => {
+  const calls = [];
+  const result = await processAgentRailPlan({
+    context: {
+      network: 'mainnet-beta',
+      amountSol: 2,
+      recipientFingerprint: 'zsol...iver#1234',
+      memoFingerprint: 'memo#abcd',
+      rail: 'x402',
+      settlement: 'solana',
+      proofLayer: 'solana',
+      durableReceipt: false,
+      hasSolanaAnchor: true,
+      solanaAnchorVerified: false,
+      operatorPrompt: 'do not leak this full operator note',
+      secretKeyJson: '[1,2,3]',
+      seedPhrase: 'never include me',
+    },
+  }, {
+    env: {
+      XAI_API_KEY: 'xai-secret',
+      XAI_BASE_URL: 'https://api.x.ai/v1/',
+      XAI_MODEL: 'grok-test',
+      HELIUS_API_KEY: 'helius-secret',
+      EVM_PRIVATE_PAYMENT_VERIFIER: '0x0000000000000000000000000000000000000402',
+    },
+    fetch: async (url, init) => {
+      calls.push({ url, init });
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            choices: [{ message: { content: 'GO after verification. Use AP2 and EVM proof.' } }],
+          };
+        },
+      };
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.mode, 'xai');
+  assert.equal(result.agent.available, true);
+  assert.equal(result.agent.model, 'grok-test');
+  assert.equal(result.modelReview, 'GO after verification. Use AP2 and EVM proof.');
+  assert.equal(result.plan.recommendedRail, 'ap2');
+  assert.equal(result.plan.recommendedSettlement, 'evm');
+  assert.equal(result.plan.recommendedProofLayer, 'evm');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://api.x.ai/v1/chat/completions');
+  assert.equal(calls[0].init.headers.authorization, 'Bearer xai-secret');
+
+  const sent = JSON.parse(calls[0].init.body);
+  const prompt = sent.messages[0].content;
+  assert.match(prompt, /Recipient fingerprint: zsol\.\.\.iver#1234/);
+  assert.match(prompt, /Operator note fingerprint: operator-note#/);
+  assert.doesNotMatch(prompt, /do not leak this full operator note/);
+  assert.doesNotMatch(prompt, /secretKeyJson|\[1,2,3\]|seedPhrase|never include me|helius-secret|xai-secret/);
+});
+
+test('rail plan context can be derived from exported proof payload without raw recipient', () => {
+  const request = fixture('m2m');
+  const context = sanitizeRailPlanContext(request, {
+    HELIUS_RPC_URL: 'https://solana-rpc.example',
+    EVM_PRIVATE_PAYMENT_VERIFIER: '0x0000000000000000000000000000000000000402',
+  });
+
+  assert.equal(context.rail, 'm2m');
+  assert.equal(context.settlement, 'solana');
+  assert.equal(context.proofLayer, 'evm');
+  assert.equal(context.hasSolanaAnchor, true);
+  assert.equal(context.solanaAnchorVerified, true);
+  assert.equal(context.heliusConfigured, true);
+  assert.equal(context.evmVerifierConfigured, true);
+  assert.match(context.recipientFingerprint, /^zsol\.\.\.iver#/);
+  assert.notEqual(context.recipientFingerprint, request.proofPayload.recipient);
 });

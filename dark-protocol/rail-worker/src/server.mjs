@@ -4,6 +4,7 @@ import {
   createWorkerState,
   getRailSettlement,
   listRailSettlements,
+  processAgentRailPlan,
   processRailRequest,
   responseBody,
 } from './worker.mjs';
@@ -52,6 +53,20 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && requestUrl.pathname === '/health') {
     res.writeHead(200, jsonHeaders());
     res.end(JSON.stringify({ ok: true, service: 'zolana-dark-rail-worker' }));
+    return;
+  }
+
+  if (req.method === 'POST' && requestUrl.pathname === '/agent/rail-plan') {
+    try {
+      const body = await readJson(req);
+      const result = await processAgentRailPlan(body, { env: process.env });
+      res.writeHead(result.status, jsonHeaders());
+      res.end(responseBody(result));
+    } catch (error) {
+      const status = error instanceof SyntaxError ? 400 : 500;
+      res.writeHead(status, jsonHeaders());
+      res.end(JSON.stringify({ ok: false, error: error.message }));
+    }
     return;
   }
 

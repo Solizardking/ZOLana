@@ -31,6 +31,10 @@ HELIUS_API_KEY=...
 SOLANA_RPC_URL=https://api.devnet.solana.com
 SOLANA_CLUSTER=devnet
 RAIL_WORKER_BACKEND_TOKEN=optional-shared-secret
+XAI_API_KEY=
+XAI_BASE_URL=https://api.x.ai/v1
+XAI_MODEL=grok-4.20-beta-latest-non-reasoning
+XAI_TEMPERATURE=0.2
 X402_FACILITATOR_URL=https://facilitator.example/authorize
 AP2_MANDATE_RUNNER_URL=https://ap2.example/mandates/run
 M2M_SETTLEMENT_URL=https://m2m.example/sessions/settle
@@ -79,6 +83,44 @@ Read settlement ledger entries:
 curl http://127.0.0.1:4020/rail/settlements
 curl http://127.0.0.1:4020/rail/settlements/rail_x402_...
 ```
+
+## Dark Clawd Agent Planning
+
+`POST /agent/rail-plan` returns a public-only rail plan for Dark Wallet before a
+receipt is staged or submitted. This endpoint does not consume replay keys,
+write settlement ledger entries, or claim settlement. It exists to keep
+`XAI_API_KEY` server-side when the browser wallet asks Dark Clawd for x402/AP2/M2M
+policy guidance.
+
+If `XAI_API_KEY` is absent, the endpoint returns deterministic local guardrails.
+If `XAI_API_KEY` is present, it sends a sanitized prompt to xAI and includes the
+model review in the response. The prompt contains amount, selected rail,
+settlement, proof layer, durable-receipt flag, Helius/EVM/rail-worker readiness,
+Solana anchor status, recipient fingerprint, memo fingerprint, and prompt
+digest. It does not include seed phrases, paper-wallet secret-key JSON,
+plaintext private memos, backend tokens, or API keys.
+
+```bash
+curl -X POST http://127.0.0.1:4020/agent/rail-plan \
+  -H 'content-type: application/json' \
+  --data '{
+    "context": {
+      "network": "devnet",
+      "amountSol": 0.25,
+      "recipientFingerprint": "zsol...iver#1234",
+      "rail": "x402",
+      "settlement": "solana",
+      "proofLayer": "evm",
+      "durableReceipt": true,
+      "hasSolanaAnchor": false,
+      "solanaAnchorVerified": false
+    }
+  }'
+```
+
+The endpoint can also derive a sanitized context from an exported wallet
+`proofPayload` plus `railAuthorization`. In that mode it fingerprints the
+recipient and memo hash before planning.
 
 ## What It Enforces
 

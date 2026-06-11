@@ -11,6 +11,7 @@ import {
   type RailAuthorizationEnvelope,
   type RailAuthorizationOptions,
 } from './rail-authorization';
+import type { DarkClawdRailPlan, DarkClawdRailPlanContext } from '../utils/dark-clawd-agent';
 
 export interface RailWorkerLedgerAck {
   durable: boolean;
@@ -81,6 +82,28 @@ export interface SubmitRailAuthorizationOptions extends RailAuthorizationOptions
   workerUrl: string;
   fetchImpl?: typeof fetch;
   requireSolanaAnchor?: boolean;
+}
+
+export interface RailWorkerAgentPlanResult {
+  ok: boolean;
+  status: number;
+  mode?: 'local' | 'xai';
+  service?: string;
+  agent?: {
+    available: boolean;
+    model?: string;
+    baseUrl?: string;
+    skipped?: boolean;
+    error?: string;
+  };
+  context?: DarkClawdRailPlanContext;
+  plan?: DarkClawdRailPlan;
+  modelReview?: string;
+  promptDigest?: string;
+  promptVersion?: number;
+  error?: string;
+  errors?: string[];
+  workerUrl: string;
 }
 
 function normalizeWorkerUrl(workerUrl: string): string {
@@ -180,6 +203,31 @@ export async function getRailWorkerSettlement(
     status: response.status,
     settlement: payload.settlement,
     error: payload.error,
+    workerUrl,
+  };
+}
+
+export async function planRailWithWorker(
+  workerUrlValue: string,
+  context: DarkClawdRailPlanContext,
+  fetchImpl: typeof fetch = fetch,
+): Promise<RailWorkerAgentPlanResult> {
+  const workerUrl = normalizeWorkerUrl(workerUrlValue);
+  const publicContext = { ...context };
+  delete publicContext.operatorPrompt;
+  const response = await fetchImpl(`${workerUrl}/agent/rail-plan`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ context: publicContext }),
+  });
+  const payload = await readJsonResponse(response);
+
+  return {
+    ...payload,
+    ok: Boolean(payload.ok) && response.ok,
+    status: response.status,
     workerUrl,
   };
 }

@@ -44,6 +44,8 @@ What is now wired:
    posture. It also provides deterministic-plus-xAI private-payment rail
    planning that can recommend x402/AP2/M2M, Solana/EVM settlement, EVM proof
    mode, and durable-receipt requirements from public intent metadata only.
+   When `RAIL_WORKER_URL` is configured, `/agent/rail-plan` performs the xAI
+   review server-side so `XAI_API_KEY` does not need to ship to the browser.
 4. `dark-wallet/src/sdk/private-payment.ts` adds durable private payment
    staging for `x402`, `AP2`, and `M2M`, with explicit Solana/EVM settlement,
    lamport-denominated receipts, local commitments, Solana anchor metadata, and

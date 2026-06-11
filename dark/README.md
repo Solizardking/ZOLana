@@ -25,7 +25,9 @@ the Zcash/Sapling paper-wallet workflow into Solana/SVM execution:
 3. Dark Clawd plans private-payment rails from public metadata before the
    operator stages or submits a receipt. It can recommend x402/AP2/M2M,
    Solana/EVM settlement, EVM proof mode, durable receipts, Solana Memo
-   verification, and rail-worker readiness without seeing secrets.
+   verification, and rail-worker readiness without seeing secrets. The browser
+   can run the deterministic policy locally, but the preferred xAI path is the
+   rail worker `/agent/rail-plan` endpoint so `XAI_API_KEY` remains server-side.
 4. Shield, unshield, private transfer, and private-payment actions anchor
    intent envelopes as wallet-signed Solana Memo transactions on devnet or
    mainnet-beta.

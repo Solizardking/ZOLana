@@ -45,6 +45,7 @@ import {
 } from '../../sdk/rail-authorization';
 import {
   getRailWorkerSettlement,
+  planRailWithWorker,
   railWorkerStatusFromAuthorizeResult,
   railWorkerStatusFromLedgerEntry,
   submitRailAuthorizationToWorker,
@@ -146,17 +147,38 @@ const PaperWallet: React.FC = () => {
       return;
     }
 
-    if (!agent) {
-      setStatus('Local Dark Clawd policy plan ready. Set XAI_API_KEY for model review.');
-      return;
-    }
-
     setPlanningRail(true);
-    setStatus('Dark Clawd is reviewing public rail metadata...');
     try {
+      if (runtime.railWorkerUrl) {
+        setStatus('Rail worker Dark Clawd is planning with server-side public metadata...');
+        const workerResult = await planRailWithWorker(runtime.railWorkerUrl, context);
+        if (workerResult.ok && workerResult.plan) {
+          setRailPlan(workerResult.plan);
+          setRailPlanResponse([
+            `Rail worker ${workerResult.mode === 'xai' ? 'xAI review' : 'local policy'}:`,
+            workerResult.modelReview || 'No server-side model review returned; using rail-worker deterministic policy.',
+            '',
+            'Worker guardrail:',
+            formatDarkClawdRailPlan(workerResult.plan),
+            '',
+            `Prompt digest: ${workerResult.promptDigest ?? 'not returned'}`,
+          ].join('\n'));
+          setStatus(`Rail worker Dark Clawd plan complete (${workerResult.mode ?? 'local'} mode)`);
+          return;
+        }
+
+        setStatus(workerResult.error || workerResult.errors?.join('; ') || 'Rail worker planning failed; falling back locally');
+      }
+
+      if (!agent) {
+        setStatus('Local Dark Clawd policy plan ready. Set RAIL_WORKER_URL for server-side xAI, or XAI_API_KEY for browser-side review.');
+        return;
+      }
+
+      setStatus('Browser Dark Clawd is reviewing public rail metadata...');
       const response = await agent.reviewPrivatePaymentRail(context);
       setRailPlanResponse([
-        'xAI review:',
+        'Browser xAI review:',
         response || 'No model response returned',
         '',
         'Deterministic guardrail:',
@@ -661,6 +683,7 @@ const PaperWallet: React.FC = () => {
         <p className="hint mt-3">
           Dark Clawd rail planning sends only public intent metadata and fingerprints:
           amount, rail, settlement, proof layer, config flags, and anchor status. It never sends secret-key JSON.
+          When RAIL_WORKER_URL is configured, the worker performs the xAI review server-side so XAI_API_KEY stays off the browser.
         </p>
         {railPlanResponse && (
           <div className="mini-panel mt-4 whitespace-pre-wrap text-sm text-gray-300">

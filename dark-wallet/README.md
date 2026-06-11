@@ -34,10 +34,15 @@ configured. The agent receives public metadata and operator instructions only;
 secret key JSON is not sent to the model.
 
 The private-payment primitive also has `Plan With Dark Clawd`. This runs a
-deterministic local policy plan first, then optionally asks xAI to review that
-plan. The planner sees only public intent metadata and fingerprints: amount,
-rail, settlement, proof layer, durable-receipt flag, Helius/RPC configuration,
-EVM verifier availability, rail-worker availability, Solana anchor status, and
+deterministic local policy plan first. When `RAIL_WORKER_URL` is configured, the
+wallet asks the rail worker's `/agent/rail-plan` endpoint for server-side
+planning, so `XAI_API_KEY` can stay on the worker instead of being exposed to
+the browser. If no worker is configured, the wallet can still use the local
+policy plan and optional browser-side xAI review.
+
+The planner sees only public intent metadata and fingerprints: amount, rail,
+settlement, proof layer, durable-receipt flag, Helius/RPC configuration, EVM
+verifier availability, rail-worker availability, Solana anchor status, and
 receipt/memo fingerprints. It never sends seed phrases, secret-key JSON, or raw
 private memos.
 
