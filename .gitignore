@@ -36,7 +36,7 @@ node_modules
 !.env.example
 !.env.template
 !.env.sample
-client_secret_***REMOVED***.apps.googleusercontent.com
+client_secret_*.apps.googleusercontent.com*
 # Private keys / certs / wallets
 *.pem
 *.key
