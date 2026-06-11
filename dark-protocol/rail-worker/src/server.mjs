@@ -5,6 +5,7 @@ import {
   getRailSettlement,
   listRailSettlements,
   processAgentRailPlan,
+  processRailPreflight,
   processRailRequest,
   responseBody,
 } from './worker.mjs';
@@ -53,6 +54,18 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && requestUrl.pathname === '/health') {
     res.writeHead(200, jsonHeaders());
     res.end(JSON.stringify({ ok: true, service: 'zolana-dark-rail-worker' }));
+    return;
+  }
+
+  if (req.method === 'GET' && requestUrl.pathname === '/rail/preflight') {
+    const result = await processRailPreflight({
+      env: process.env,
+      state,
+      settlementConfig,
+      probe: ['1', 'true', 'yes'].includes((requestUrl.searchParams.get('probe') ?? '').toLowerCase()),
+    });
+    res.writeHead(result.status, jsonHeaders());
+    res.end(responseBody(result));
     return;
   }
 

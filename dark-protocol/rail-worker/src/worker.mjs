@@ -214,6 +214,191 @@ export function createAgentConfig(env = process.env) {
   };
 }
 
+function redactEndpoint(value = '') {
+  const input = String(value ?? '').trim();
+  if (!input) return undefined;
+
+  try {
+    const url = new URL(input);
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return `invalid-url#${stableHex(input, 4)}`;
+  }
+}
+
+function configuredSecret(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+async function probeBackendEndpoint(rail, endpoint, backendToken, fetchImpl) {
+  if (!endpoint) {
+    return {
+      rail,
+      configured: false,
+      status: 'missing',
+    };
+  }
+
+  const base = {
+    rail,
+    configured: true,
+    endpoint: redactEndpoint(endpoint),
+    endpointDigest: stableDigest(endpoint),
+    authConfigured: configuredSecret(backendToken),
+  };
+
+  if (typeof fetchImpl !== 'function') {
+    return {
+      ...base,
+      status: 'configured',
+      probe: 'skipped',
+      reason: 'fetch is unavailable',
+    };
+  }
+
+  try {
+    const response = await fetchImpl(endpoint, {
+      method: 'HEAD',
+      headers: backendToken ? { authorization: `Bearer ${backendToken}` } : {},
+    });
+    return {
+      ...base,
+      status: response.status >= 500 ? 'unhealthy' : 'reachable',
+      probe: 'head',
+      responseStatus: response.status,
+    };
+  } catch (error) {
+    return {
+      ...base,
+      status: 'unreachable',
+      probe: 'head',
+      error: error.message,
+    };
+  }
+}
+
+export async function processRailPreflight(options = {}) {
+  const env = options.env ?? process.env;
+  const settlementConfig = options.settlementConfig ?? createSettlementConfig(env);
+  const solanaConfig = options.solanaVerificationConfig ?? createSolanaVerificationConfig(env);
+  const agentConfig = options.agentConfig ?? createAgentConfig(env);
+  const state = options.state;
+  const probe = options.probe === true;
+  const fetchImpl = probe ? (options.fetch ?? globalThis.fetch) : undefined;
+  const evmChainId = Number.parseInt(env.EVM_CHAIN_ID ?? '1', 10);
+  const evmVerifier = env.EVM_PRIVATE_PAYMENT_VERIFIER ?? '';
+
+  const rails = {};
+  for (const rail of VALID_RAILS) {
+    rails[rail] = probe
+      ? await probeBackendEndpoint(
+        rail,
+        settlementConfig.backendUrls?.[rail] ?? '',
+        settlementConfig.backendToken,
+        fetchImpl,
+      )
+      : {
+        rail,
+        configured: Boolean(settlementConfig.backendUrls?.[rail]),
+        status: settlementConfig.backendUrls?.[rail] ? 'configured' : 'missing',
+        endpoint: redactEndpoint(settlementConfig.backendUrls?.[rail] ?? ''),
+        endpointDigest: settlementConfig.backendUrls?.[rail]
+          ? stableDigest(settlementConfig.backendUrls[rail])
+          : undefined,
+        authConfigured: configuredSecret(settlementConfig.backendToken),
+      };
+  }
+
+  const configuredRails = Object.values(rails).filter(rail => rail.configured).map(rail => rail.rail);
+  const reachableRails = Object.values(rails)
+    .filter(rail => rail.configured && (!probe || rail.status === 'reachable'))
+    .map(rail => rail.rail);
+  const blockers = [];
+  const warnings = [];
+
+  if (solanaConfig.required && !solanaConfig.rpcUrl) {
+    blockers.push('Solana Memo verification is required but no Helius/Solana RPC URL is configured.');
+  } else if (solanaConfig.enabled && !solanaConfig.rpcUrl) {
+    warnings.push('Solana Memo verification is enabled but no Helius/Solana RPC URL is configured.');
+  }
+
+  if (!evmVerifier) {
+    blockers.push('EVM_PRIVATE_PAYMENT_VERIFIER is not configured.');
+  }
+
+  if (configuredRails.length === 0) {
+    warnings.push('No x402/AP2/M2M settlement backend is configured; rail worker will run intent-only.');
+  }
+
+  if (probe) {
+    const unreachable = Object.values(rails)
+      .filter(rail => rail.configured && rail.status !== 'reachable')
+      .map(rail => rail.rail);
+    if (unreachable.length > 0) {
+      blockers.push(`Configured rail backend probe failed for: ${unreachable.join(', ')}.`);
+    }
+  }
+
+  const allRailsConfigured = configuredRails.length === VALID_RAILS.size;
+  const liveSettlementReady = configuredRails.length > 0 && (!probe || reachableRails.length > 0);
+  const coreReady = blockers.length === 0;
+  const mode = !coreReady
+    ? 'blocked'
+    : allRailsConfigured && liveSettlementReady
+      ? 'live-ready'
+      : liveSettlementReady
+        ? 'partial-live'
+        : 'intent-only';
+
+  return {
+    ok: true,
+    status: 200,
+    service: 'zolana-dark-rail-worker-preflight',
+    generatedAt: new Date(options.now ?? Date.now()).toISOString(),
+    mode,
+    ready: coreReady && liveSettlementReady,
+    liveSettlementReady,
+    allRailsConfigured,
+    blockers,
+    warnings,
+    solana: {
+      cluster: env.SOLANA_CLUSTER === 'mainnet-beta' ? 'mainnet-beta' : 'devnet',
+      verificationEnabled: solanaConfig.enabled,
+      verificationRequired: solanaConfig.required,
+      commitment: solanaConfig.commitment,
+      rpcConfigured: Boolean(solanaConfig.rpcUrl),
+      rpcEndpoint: redactEndpoint(solanaConfig.rpcUrl),
+      rpcEndpointDigest: solanaConfig.rpcUrl ? stableDigest(solanaConfig.rpcUrl) : undefined,
+      status: solanaConfig.required && !solanaConfig.rpcUrl
+        ? 'blocked'
+        : solanaConfig.rpcUrl
+          ? 'ready'
+          : 'not-configured',
+    },
+    evm: {
+      chainId: Number.isFinite(evmChainId) ? evmChainId : 1,
+      verifierConfigured: Boolean(evmVerifier),
+      verifier: evmVerifier || undefined,
+      status: evmVerifier ? 'ready' : 'blocked',
+    },
+    xai: {
+      configured: Boolean(agentConfig.apiKey),
+      model: agentConfig.model,
+      baseUrl: agentConfig.apiKey ? agentConfig.baseUrl : undefined,
+      status: agentConfig.apiKey ? 'ready' : 'local-policy-only',
+    },
+    replayLedger: {
+      durable: Boolean(state?.replayStore?.durable),
+      status: state?.replayStore?.durable ? 'durable' : 'memory-only',
+    },
+    rails,
+  };
+}
+
 export function stableDigest(value) {
   return `0x${createHash('sha256').update(value).digest('hex')}`;
 }

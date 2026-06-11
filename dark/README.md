@@ -80,7 +80,7 @@ Solana Memo anchors, durable local shielded-note state, durable receipts, rail
 authorization exports, direct wallet submission to the rail worker, independent
 worker-side Solana Memo verification, sanitized rail-worker EVM verifier handoff
 plans, EVM verifier tests, dry-run-first EVM proof signing and relay scripts,
-durable rail-worker replay/settlement state, and backend adapter hooks exist. A live x402
-facilitator, AP2 mandate runner, or M2M settlement backend must be supplied
-through the env vars above before the system should claim final payment
-settlement.
+durable rail-worker replay/settlement state, backend adapter hooks, and
+`/rail/preflight` readiness checks exist. A live x402 facilitator, AP2 mandate
+runner, or M2M settlement backend must be supplied through the env vars above
+and pass preflight before the system should claim final payment settlement.

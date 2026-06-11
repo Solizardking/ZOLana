@@ -6,6 +6,7 @@ import path from 'node:path';
 import {
   createWorkerState,
   processAgentRailPlan,
+  processRailPreflight,
   processRailRequest,
   sanitizeRailPlanContext,
   stableHex,
@@ -245,6 +246,78 @@ test('valid x402 rail authorization is accepted and consumes replay key', async 
   const replay = await processRailRequest(fixture('x402'), state, { now: 1760000003000 });
   assert.equal(replay.ok, false);
   assert.equal(replay.status, 409);
+});
+
+test('rail preflight reports intent-only when live settlement backends are missing', async () => {
+  const result = await processRailPreflight({
+    env: {
+      RAIL_WORKER_VERIFY_SOLANA_ANCHOR: '1',
+      RAIL_WORKER_REQUIRE_SOLANA_VERIFICATION: '1',
+      HELIUS_API_KEY: 'helius-secret',
+      SOLANA_CLUSTER: 'devnet',
+      EVM_PRIVATE_PAYMENT_VERIFIER: '0x0000000000000000000000000000000000000402',
+    },
+    state: createWorkerState(),
+    now: 1760000002000,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 200);
+  assert.equal(result.mode, 'intent-only');
+  assert.equal(result.ready, false);
+  assert.equal(result.liveSettlementReady, false);
+  assert.equal(result.solana.status, 'ready');
+  assert.equal(result.evm.status, 'ready');
+  assert.equal(result.rails.x402.status, 'missing');
+  assert.match(result.warnings.join('\n'), /intent-only/);
+  assert.doesNotMatch(JSON.stringify(result), /helius-secret/);
+});
+
+test('rail preflight probes configured backends without leaking secrets', async () => {
+  const calls = [];
+  const result = await processRailPreflight({
+    env: {
+      RAIL_WORKER_STORE_PATH: '/tmp/not-used-in-test.json',
+      RAIL_WORKER_VERIFY_SOLANA_ANCHOR: '1',
+      RAIL_WORKER_REQUIRE_SOLANA_VERIFICATION: '1',
+      HELIUS_RPC_URL: 'https://devnet.helius-rpc.com/?api-key=helius-secret',
+      SOLANA_CLUSTER: 'mainnet-beta',
+      EVM_CHAIN_ID: '8453',
+      EVM_PRIVATE_PAYMENT_VERIFIER: '0x0000000000000000000000000000000000000402',
+      XAI_API_KEY: 'xai-secret',
+      XAI_MODEL: 'grok-test',
+      RAIL_WORKER_BACKEND_TOKEN: 'rail-secret',
+      X402_FACILITATOR_URL: 'https://x402.example/authorize?token=secret',
+      AP2_MANDATE_RUNNER_URL: 'https://ap2.example/mandates/run',
+      M2M_SETTLEMENT_URL: 'https://m2m.example/sessions/settle',
+    },
+    state: { replayStore: { durable: true } },
+    probe: true,
+    now: 1760000002000,
+    fetch: async (url, init) => {
+      calls.push({ url, init });
+      return { ok: true, status: url.includes('ap2') ? 204 : 200 };
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.mode, 'live-ready');
+  assert.equal(result.ready, true);
+  assert.equal(result.liveSettlementReady, true);
+  assert.equal(result.allRailsConfigured, true);
+  assert.equal(result.solana.cluster, 'mainnet-beta');
+  assert.equal(result.solana.rpcEndpoint, 'https://devnet.helius-rpc.com/');
+  assert.equal(result.evm.chainId, 8453);
+  assert.equal(result.xai.configured, true);
+  assert.equal(result.xai.model, 'grok-test');
+  assert.equal(result.replayLedger.status, 'durable');
+  assert.equal(result.rails.x402.status, 'reachable');
+  assert.equal(result.rails.ap2.responseStatus, 204);
+  assert.equal(calls.length, 3);
+  assert.deepEqual(calls.map(call => call.init.method), ['HEAD', 'HEAD', 'HEAD']);
+  assert.ok(calls.every(call => call.init.headers.authorization === 'Bearer rail-secret'));
+  assert.doesNotMatch(JSON.stringify(result), /helius-secret|xai-secret|rail-secret|token=secret/);
+  assert.match(result.rails.x402.endpointDigest, /^0x[a-f0-9]{64}$/);
 });
 
 test('required Solana RPC Memo verification accepts matching private-payment anchor', async () => {

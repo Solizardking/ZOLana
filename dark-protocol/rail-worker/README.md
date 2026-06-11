@@ -84,6 +84,38 @@ curl http://127.0.0.1:4020/rail/settlements
 curl http://127.0.0.1:4020/rail/settlements/rail_x402_...
 ```
 
+## Rail Preflight
+
+`GET /rail/preflight` is a read-only readiness check for the live rail stack.
+It reports whether Solana Memo verification has an RPC endpoint, whether
+`XAI_API_KEY` is available for server-side Dark Clawd planning, whether
+`EVM_PRIVATE_PAYMENT_VERIFIER` is configured, whether the replay ledger is
+durable, and which x402/AP2/M2M backend URLs are configured. It never consumes
+replay keys, never submits receipts, and never returns API keys, backend bearer
+tokens, recipients, amounts, signatures, or proof payloads.
+
+```bash
+curl http://127.0.0.1:4020/rail/preflight
+```
+
+Use probe mode when you want the worker to make `HEAD` requests to configured
+rail backends without sending wallet proofs:
+
+```bash
+curl 'http://127.0.0.1:4020/rail/preflight?probe=1'
+```
+
+The response `mode` is:
+
+- `live-ready` when core Solana/EVM checks pass and all x402/AP2/M2M backends
+  are configured.
+- `partial-live` when core checks pass and at least one live backend is
+  configured.
+- `intent-only` when core checks pass but no live settlement backend is
+  configured.
+- `blocked` when required Solana RPC verification, EVM verifier config, or a
+  probed backend is not usable.
+
 ## Dark Clawd Agent Planning
 
 `POST /agent/rail-plan` returns a public-only rail plan for Dark Wallet before a

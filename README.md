@@ -113,6 +113,11 @@ How the last-November Zcash-to-Solana port works:
 13. The verifier package also has a signer CLI that derives the verifier digest
     with `cast call hashIntent(...)` and signs it with a separate
     `EVM_INTENT_PRIVATE_KEY`, keeping the paper wallet free of EVM keys.
+14. The rail worker exposes `GET /rail/preflight` and optional
+    `/rail/preflight?probe=1` so operators can verify Helius/Solana RPC,
+    server-side xAI availability, EVM verifier configuration, durable replay
+    ledger mode, and x402/AP2/M2M backend readiness without sending receipts,
+    amounts, recipients, proof payloads, API keys, or backend bearer tokens.
 
 Program re-exploration and port mapping:
 
