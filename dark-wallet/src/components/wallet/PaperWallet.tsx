@@ -444,11 +444,12 @@ const PaperWallet: React.FC = () => {
 
   return (
     <div className="space-y-6 paper-wallet-print-root">
-      <div>
-        <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+      <div className="section-header">
+        <p className="section-kicker">Cold Storage</p>
+        <h3 className="section-title">
           Solana Paper Wallet
         </h3>
-        <p className="text-gray-400">
+        <p className="section-copy">
           Local Solana key generation adapted from the Zcash Sapling paper-wallet flow.
         </p>
       </div>
@@ -490,13 +491,13 @@ const PaperWallet: React.FC = () => {
 
           {paperWallet && (
             <div className="mt-6 space-y-4 font-mono text-sm">
-              <div className="rounded-lg border border-gray-800 bg-black/40 p-4">
-                <p className="text-gray-500 uppercase tracking-widest text-xs mb-2">Public Key</p>
+              <div className="mini-panel">
+                <p className="metric-label mb-2">Public Key</p>
                 <p className="break-all text-cyan-300">{paperWallet.publicKey}</p>
               </div>
-              <div className="rounded-lg border border-gray-800 bg-black/40 p-4">
+              <div className="mini-panel">
                 <div className="flex items-center justify-between gap-3 mb-2 paper-wallet-controls">
-                  <p className="text-gray-500 uppercase tracking-widest text-xs">Secret Key JSON</p>
+                  <p className="metric-label">Secret Key JSON</p>
                   <button className="text-xs text-cyan-300 hover:text-cyan-200" onClick={() => setShowSecret((value) => !value)}>
                     {showSecret ? 'Hide' : 'Reveal'}
                   </button>
@@ -508,12 +509,12 @@ const PaperWallet: React.FC = () => {
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="rounded-lg border border-gray-800 bg-black/40 p-4">
-                  <p className="text-gray-500 uppercase tracking-widest text-xs">Seed Fingerprint</p>
+                <div className="mini-panel">
+                  <p className="metric-label">Seed Fingerprint</p>
                   <p className="text-emerald-300">{paperWallet.seedFingerprint}</p>
                 </div>
-                <div className="rounded-lg border border-gray-800 bg-black/40 p-4">
-                  <p className="text-gray-500 uppercase tracking-widest text-xs">Public Fingerprint</p>
+                <div className="mini-panel">
+                  <p className="metric-label">Public Fingerprint</p>
                   <p className="text-emerald-300">{paperWallet.publicFingerprint}</p>
                 </div>
               </div>
@@ -522,7 +523,8 @@ const PaperWallet: React.FC = () => {
         </section>
 
         <section className="card paper-wallet-sidecar">
-          <h4 className="font-semibold mb-3 text-gray-200">Dark Clawd Agent</h4>
+          <p className="section-kicker mb-2">Agent Sidecar</p>
+          <h4 className="footer-title">Dark Clawd Agent</h4>
           <textarea
             className="input min-h-[120px]"
             value={agentPrompt}
@@ -531,14 +533,15 @@ const PaperWallet: React.FC = () => {
           <button className="btn-primary mt-4 w-full" onClick={handleAskAgent} disabled={isBusy}>
             Ask Dark Clawd
           </button>
-          <div className="mt-4 rounded-lg border border-gray-800 bg-black/40 p-4 min-h-[120px] text-sm text-gray-300 whitespace-pre-wrap">
+          <div className="mini-panel mt-4 min-h-[120px] text-sm text-gray-300 whitespace-pre-wrap">
             {agentResponse || 'xAI sidecar is ready when XAI_API_KEY is configured.'}
           </div>
         </section>
       </div>
 
       <section className="card paper-wallet-sidecar">
-        <h4 className="font-semibold mb-3 text-gray-200">Private Payment Primitive</h4>
+        <p className="section-kicker mb-2">Rail Primitive</p>
+        <h4 className="footer-title">Private Payment Primitive</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <select className="input" value={rail} onChange={(event) => setRail(event.target.value as PrivatePaymentRail)}>
             <option value="x402">x402</option>
@@ -567,25 +570,25 @@ const PaperWallet: React.FC = () => {
           Stage Private Payment
         </button>
         {lastPayment && (
-          <div className="mt-4 rounded-lg border border-gray-800 bg-black/40 p-4 text-sm text-gray-300">
+          <div className="mini-panel mt-4 text-sm text-gray-300">
             <p>Receipt: {lastPayment.id}</p>
             <p>Amount: {lastPayment.amountLamports} lamports</p>
             <p>Commitment: {lastPayment.commitmentHex}</p>
           </div>
         )}
         {paymentReceipts.length > 0 && (
-          <div className="mt-4 rounded-lg border border-gray-800 bg-black/40 p-4">
+          <div className="mini-panel mt-4">
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
-                <p className="text-sm font-semibold text-gray-200">Local Receipt History</p>
-                <p className="text-xs text-gray-500">
+                <p className="footer-title">Local Receipt History</p>
+                <p className="hint">
                   Kept in this browser only; export payloads for EVM chain {runtime.evmChainId}
                   {runtime.evmPrivatePaymentVerifier ? ` verifier ${runtime.evmPrivatePaymentVerifier.slice(0, 10)}...` : ''}
                   {' '}or anchor the intent on Solana.
                   {runtime.railWorkerUrl ? ` Rail worker: ${runtime.railWorkerUrl}` : ' Set RAIL_WORKER_URL to submit rails directly.'}
                 </p>
               </div>
-              <span className="text-xs text-cyan-300">{paymentReceipts.length} stored</span>
+              <span className="section-kicker">{paymentReceipts.length} stored</span>
             </div>
             <div className="space-y-3">
               {paymentReceipts.slice(0, 5).map((receipt) => (

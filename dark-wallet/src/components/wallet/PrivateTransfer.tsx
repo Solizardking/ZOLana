@@ -83,22 +83,23 @@ const PrivateTransfer: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-pink-400 to-rose-400 bg-clip-text text-transparent">
-          → Private Transfer
+      <div className="section-header">
+        <p className="section-kicker">Private Relay</p>
+        <h3 className="section-title">
+          Private Transfer
         </h3>
-        <p className="text-gray-400">
+        <p className="section-copy">
           Anchor a shielded-address transfer intent on Solana
         </p>
       </div>
 
       <div className="space-y-4">
-        <div className="bg-pink-500/10 border border-pink-500/30 rounded-lg p-4">
+        <div className="mini-panel">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-400">Available for Transfer:</span>
-            <span className="text-2xl font-bold text-pink-400">{shieldedBalance.toFixed(4)} SOL</span>
+            <span className="metric-label">Available for Transfer</span>
+            <span className="panel-value">{shieldedBalance.toFixed(4)} SOL</span>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="hint mt-2">
             {noteCount} local shielded ledger {noteCount === 1 ? 'entry' : 'entries'}
           </p>
         </div>
@@ -115,14 +116,14 @@ const PrivateTransfer: React.FC = () => {
             placeholder="zsol1abc123def456..."
             disabled={isLoading}
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 hint">
             Must be a Sapling-style shielded address (zs1) or ZOLana shielded address (zsol1)
           </p>
           <button
             type="button"
             onClick={handleGenerateAddress}
             disabled={isLoading}
-            className="mt-3 text-xs text-pink-300 hover:text-pink-200 disabled:opacity-50"
+            className="btn-secondary mt-3 text-xs"
           >
             Generate local zsol1 recipient address
           </button>
@@ -156,15 +157,15 @@ const PrivateTransfer: React.FC = () => {
             placeholder="Private message (encrypted for recipient only)"
             disabled={isLoading}
           />
-          <p className="mt-1 text-xs text-gray-500">
-            {memo.length} / 512 characters • Only recipient can read this
+          <p className="mt-1 hint">
+            {memo.length} / 512 characters / memo text is hashed before anchoring
           </p>
         </div>
 
         <button
           onClick={handleTransfer}
           disabled={!publicKey || isLoading || requestedAmount <= 0 || !recipientAddress || hasInsufficientBalance}
-          className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          className="btn-primary w-full"
         >
           {isLoading ? (
             <span className="flex items-center justify-center">
@@ -180,7 +181,7 @@ const PrivateTransfer: React.FC = () => {
         </button>
 
         {hasInsufficientBalance && requestedAmount > 0 && (
-          <p className="text-xs text-amber-300">
+          <p className="hint text-[color:var(--amber)]">
             Requested amount exceeds this browser's local shielded note balance.
           </p>
         )}
@@ -196,16 +197,15 @@ const PrivateTransfer: React.FC = () => {
         )}
       </div>
 
-      <div className="bg-pink-500/10 border border-pink-500/30 rounded-lg p-4">
-        <h4 className="font-semibold mb-2 flex items-center text-pink-400">
-          <span className="mr-2">ℹ️</span>
+      <div className="mini-panel">
+        <h4 className="footer-title">
           Current Private Transfer Path
         </h4>
-        <ul className="text-sm text-gray-400 space-y-1">
-          <li>✓ Wallet signs a Solana Memo transaction over a private-transfer commitment</li>
-          <li>✓ Recipient is represented as a Sapling-style `zs1` or ZOLana `zsol1` shielded address</li>
-          <li>✓ Memo text is hashed before anchoring</li>
-          <li>✓ Full note spending and verifier settlement remain Dark Protocol program work</li>
+        <ul className="footer-list">
+          <li>Wallet signs a Solana Memo transaction over a private-transfer commitment</li>
+          <li>Recipient is represented as a Sapling-style zs1 or ZOLana zsol1 shielded address</li>
+          <li>Memo text is hashed before anchoring</li>
+          <li>Full note spending and verifier settlement remain Dark Protocol program work</li>
         </ul>
       </div>
     </div>

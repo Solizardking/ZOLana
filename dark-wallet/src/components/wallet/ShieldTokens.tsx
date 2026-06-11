@@ -61,22 +61,23 @@ const ShieldTokens: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
-          🔒 Shield Tokens
+      <div className="section-header">
+        <p className="section-kicker">Private Entry</p>
+        <h3 className="section-title">
+          Shield Tokens
         </h3>
-        <p className="text-gray-400">
+        <p className="section-copy">
           Anchor a shield commitment on Solana before full verifier settlement
         </p>
       </div>
 
       <div className="space-y-4">
-        <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+        <div className="mini-panel">
           <div className="flex items-center justify-between gap-4">
-            <span className="text-sm text-gray-400">Local Shielded Notes:</span>
-            <span className="text-2xl font-bold text-purple-300">{shieldedBalance.toFixed(4)} SOL</span>
+            <span className="metric-label">Local Shielded Notes</span>
+            <span className="panel-value">{shieldedBalance.toFixed(4)} SOL</span>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="hint mt-2">
             {noteCount} anchored ledger {noteCount === 1 ? 'entry' : 'entries'} on this browser profile
           </p>
         </div>
@@ -95,8 +96,8 @@ const ShieldTokens: React.FC = () => {
             placeholder="0.1"
             disabled={isLoading}
           />
-          <p className="mt-1 text-xs text-gray-500">
-            Minimum: 0.001 SOL • Fee: ~$0.0001
+          <p className="mt-1 hint">
+            Minimum: 0.001 SOL / normal Solana transaction fee applies
           </p>
         </div>
 
@@ -112,7 +113,7 @@ const ShieldTokens: React.FC = () => {
             placeholder="Private message (encrypted, max 512 bytes)"
             disabled={isLoading}
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 hint">
             {memo.length} / 512 characters
           </p>
         </div>
@@ -146,16 +147,15 @@ const ShieldTokens: React.FC = () => {
         )}
       </div>
 
-      <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-        <h4 className="font-semibold mb-2 flex items-center text-purple-400">
-          <span className="mr-2">ℹ️</span>
+      <div className="mini-panel">
+        <h4 className="footer-title">
           Current Shielding Path
         </h4>
-        <ul className="text-sm text-gray-400 space-y-1">
-          <li>• The wallet signs a Solana Memo transaction over a shield commitment</li>
-          <li>• The memo stores amount commitment metadata, not plaintext private memo text</li>
-          <li>• Helius or the configured Solana RPC submits the transaction</li>
-          <li>• This is the live SVM intent rail while the Dark Protocol verifier is finalized</li>
+        <ul className="footer-list">
+          <li>The wallet signs a Solana Memo transaction over a shield commitment</li>
+          <li>The memo stores amount commitment metadata, not plaintext private memo text</li>
+          <li>Helius or the configured Solana RPC submits the transaction</li>
+          <li>This is the live SVM intent rail while the Dark Protocol verifier is finalized</li>
         </ul>
       </div>
     </div>

@@ -74,22 +74,23 @@ const UnshieldTokens: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
-          🔓 Unshield Tokens
+      <div className="section-header">
+        <p className="section-kicker">Private Exit</p>
+        <h3 className="section-title">
+          Unshield Tokens
         </h3>
-        <p className="text-gray-400">
+        <p className="section-copy">
           Anchor an unshield commitment before full verifier settlement
         </p>
       </div>
 
       <div className="space-y-4">
-        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
+        <div className="mini-panel">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-400">Shielded Balance:</span>
-            <span className="text-2xl font-bold text-emerald-400">{shieldedBalance.toFixed(4)} SOL</span>
+            <span className="metric-label">Shielded Balance</span>
+            <span className="panel-value">{shieldedBalance.toFixed(4)} SOL</span>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="hint mt-2">
             {noteCount > 0
               ? `${noteCount} local ledger ${noteCount === 1 ? 'entry' : 'entries'} available for debit`
               : 'No local shielded notes found. Shield some tokens first.'}
@@ -124,7 +125,7 @@ const UnshieldTokens: React.FC = () => {
             placeholder={publicKey?.toBase58() || 'Your wallet address'}
             disabled={isLoading}
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 hint">
             Leave empty to send to your connected wallet
           </p>
         </div>
@@ -148,7 +149,7 @@ const UnshieldTokens: React.FC = () => {
         </button>
 
         {hasInsufficientBalance && requestedAmount > 0 && (
-          <p className="text-xs text-amber-300">
+          <p className="hint text-[color:var(--amber)]">
             Requested amount exceeds this browser's local shielded note balance.
           </p>
         )}
@@ -164,16 +165,15 @@ const UnshieldTokens: React.FC = () => {
         )}
       </div>
 
-      <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
-        <h4 className="font-semibold mb-2 flex items-center text-emerald-400">
-          <span className="mr-2">ℹ️</span>
+      <div className="mini-panel">
+        <h4 className="footer-title">
           Current Unshielding Path
         </h4>
-        <ul className="text-sm text-gray-400 space-y-1">
-          <li>• The wallet signs a Solana Memo transaction over an unshield commitment</li>
-          <li>• Recipient is included as a transparent Solana address</li>
-          <li>• The transaction is submitted through Helius or the configured Solana RPC</li>
-          <li>• Full note spending, nullifiers, and ZK verification remain Dark Protocol program work</li>
+        <ul className="footer-list">
+          <li>The wallet signs a Solana Memo transaction over an unshield commitment</li>
+          <li>Recipient is included as a transparent Solana address</li>
+          <li>The transaction is submitted through Helius or the configured Solana RPC</li>
+          <li>Full note spending, nullifiers, and ZK verification remain Dark Protocol program work</li>
         </ul>
       </div>
     </div>

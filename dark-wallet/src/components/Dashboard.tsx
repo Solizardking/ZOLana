@@ -11,12 +11,12 @@ import { getShieldedBalanceSol, SHIELDED_LEDGER_EVENT } from '../sdk/shielded-le
 
 type WalletTab = 'shield' | 'unshield' | 'transfer' | 'paper' | 'helius';
 
-const tabs: Array<{ id: WalletTab; label: string; tone: string }> = [
-  { id: 'shield', label: 'Shield', tone: 'from-purple-600 to-indigo-600' },
-  { id: 'unshield', label: 'Unshield', tone: 'from-emerald-600 to-teal-600' },
-  { id: 'transfer', label: 'Private Transfer', tone: 'from-pink-600 to-rose-600' },
-  { id: 'paper', label: 'Paper Wallet', tone: 'from-cyan-600 to-emerald-600' },
-  { id: 'helius', label: '🔭 HeliusViz', tone: 'from-cyan-500 to-blue-600' },
+const tabs: Array<{ id: WalletTab; label: string }> = [
+  { id: 'shield', label: 'Shield' },
+  { id: 'unshield', label: 'Unshield' },
+  { id: 'transfer', label: 'Private Transfer' },
+  { id: 'paper', label: 'Paper Wallet' },
+  { id: 'helius', label: 'HeliusViz' },
 ];
 
 const Dashboard: React.FC = () => {
@@ -67,69 +67,55 @@ const Dashboard: React.FC = () => {
     return () => window.removeEventListener(SHIELDED_LEDGER_EVENT, syncShieldedLedger);
   }, [publicKey]);
 
-  const activeTone = tabs.find((tab) => tab.id === activeTab)?.tone ?? tabs[0].tone;
-
   return (
     <div className="max-w-7xl mx-auto space-y-8">
-      <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="card">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-3">
-            Transparent
-          </h3>
-          <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+      <section className="dashboard-grid">
+        <div className="metric-card">
+          <h3 className="metric-label">Transparent</h3>
+          <div className="metric-value">
             {balance.toFixed(4)} SOL
           </div>
-          <p className="text-sm text-gray-400 mt-2">
+          <p className="metric-note">
             {connected ? 'Read from connected wallet' : 'Connect wallet for live balance'}
           </p>
         </div>
 
-        <div className="card">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-3">
-            Shielded
-          </h3>
-          <div className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
+        <div className="metric-card">
+          <h3 className="metric-label">Shielded</h3>
+          <div className="metric-value signal">
             {shieldedBalance.toFixed(4)} SOL
           </div>
-          <p className="text-sm text-gray-400 mt-2">Private notes and staged commitments</p>
+          <p className="metric-note">Local note ledger and staged commitments</p>
         </div>
 
-        <div className="card">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-3">
-            Network
-          </h3>
-          <div className="text-2xl font-bold text-emerald-300">
+        <div className="metric-card">
+          <h3 className="metric-label">Network</h3>
+          <div className="metric-value">
             {formatNetworkLabel(runtime.defaultNetwork)}
           </div>
-          <p className="text-sm text-gray-400 mt-2">
+          <p className="metric-note">
             {runtime.heliusRpcUrl || runtime.heliusApiKey ? 'Helius RPC configured' : 'Public RPC fallback'}
           </p>
         </div>
 
-        <div className="card">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-3">
-            Slot
-          </h3>
-          <div className="text-2xl font-bold text-cyan-300">
+        <div className="metric-card">
+          <h3 className="metric-label">Slot</h3>
+          <div className="metric-value">
             {slot ?? 'offline'}
           </div>
-          <p className="text-sm text-gray-400 mt-2">
+          <p className="metric-note">
             {runtime.xaiApiKey ? 'Dark Clawd xAI sidecar ready' : 'Set XAI_API_KEY for agent review'}
           </p>
         </div>
       </section>
 
-      <section className="card">
-        <div className="flex flex-wrap gap-3 border-b border-gray-800 pb-4">
+      <section className="card tab-card">
+        <div className="tab-rail">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-3 rounded-lg font-semibold transition-all ${
-                activeTab === tab.id
-                  ? `bg-gradient-to-r ${tab.tone} text-white shadow-lg`
-                  : 'bg-gray-950 text-gray-400 hover:text-white border border-gray-800'
-              }`}
+              className={`tab-button ${activeTab === tab.id ? 'tab-button-active' : ''}`}
             >
               {tab.label}
             </button>
@@ -138,21 +124,22 @@ const Dashboard: React.FC = () => {
       </section>
 
       {activeTab === 'helius' ? (
-        <section>
+        <section className="module-panel">
           <HeliusViz />
         </section>
       ) : !connected && activeTab !== 'paper' ? (
-        <section className="card text-center py-14">
-          <h2 className={`text-3xl font-bold mb-4 bg-gradient-to-r ${activeTone} bg-clip-text text-transparent`}>
+        <section className="card connect-panel module-panel">
+          <p className="section-kicker">Wallet Required</p>
+          <h2 className="connect-title">
             Connect a Solana wallet
           </h2>
-          <p className="text-gray-400 max-w-2xl mx-auto">
+          <p className="connect-copy mx-auto">
             Shielding, unshielding, and private transfers need an injected wallet.
             The paper-wallet tab works offline and can be used without connecting.
           </p>
         </section>
       ) : (
-        <section className="card">
+        <section className="card module-panel">
           {activeTab === 'shield' && <ShieldTokens />}
           {activeTab === 'unshield' && <UnshieldTokens />}
           {activeTab === 'transfer' && <PrivateTransfer />}
@@ -160,10 +147,10 @@ const Dashboard: React.FC = () => {
         </section>
       )}
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card">
-          <h4 className="font-semibold mb-3 text-gray-200">Port Status</h4>
-          <ul className="text-sm text-gray-400 space-y-2">
+          <h4 className="footer-title">Port Status</h4>
+          <ul className="footer-list">
             <li>Zcash paper flow adapted to Solana keypairs</li>
             <li>Devnet/mainnet-beta selected through env</li>
             <li>Helius RPC supported through key or full URL</li>
@@ -171,8 +158,8 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="card">
-          <h4 className="font-semibold mb-3 text-gray-200">Privacy</h4>
-          <ul className="text-sm text-gray-400 space-y-2">
+          <h4 className="footer-title">Privacy</h4>
+          <ul className="footer-list">
             <li>Shielded address UX preserved</li>
             <li>Paper wallet secret reveal is explicit</li>
             <li>Private payment receipts carry commitments</li>
@@ -180,8 +167,8 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="card">
-          <h4 className="font-semibold mb-3 text-gray-200">Agent</h4>
-          <ul className="text-sm text-gray-400 space-y-2">
+          <h4 className="footer-title">Agent</h4>
+          <ul className="footer-list">
             <li>Dark Clawd uses xAI when configured</li>
             <li>Agent only reviews public metadata</li>
             <li>x402/AP2/M2M payment rail selection is staged</li>

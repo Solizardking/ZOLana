@@ -353,22 +353,22 @@ export default function HeliusViz() {
   ];
 
   return (
-    <div className="bg-gray-900/50 rounded-xl border border-gray-800 overflow-hidden">
+    <div className="card overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-gray-800 bg-gray-900/80">
+      <div className="p-4 border-b border-[color:var(--line)] bg-black/20">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🛰️</span>
+            <span className="section-kicker">RPC</span>
             <div>
-              <h2 className="text-lg font-bold text-white">HeliusViz</h2>
-              <p className="text-xs text-gray-400">Interactive SDK Explorer — mirroring every Helius API</p>
+              <h2 className="footer-title">HeliusViz</h2>
+              <p className="hint">Interactive SDK Explorer / mirroring every Helius API</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <select
               value={mode}
               onChange={e => setMode(e.target.value as HeliusMode)}
-              className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300"
+              className="input text-xs py-1"
             >
               <option value="demo">🎮 Demo</option>
               <option value="live">🔴 Live</option>
@@ -379,23 +379,19 @@ export default function HeliusViz() {
                 placeholder="HELIUS_API_KEY"
                 value={apiKey}
                 onChange={e => setApiKey(e.target.value)}
-                className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 w-40"
+                className="input text-xs py-1 w-40"
               />
             )}
           </div>
         </div>
 
         {/* Tabs */}
-        <nav className="flex gap-1 overflow-x-auto">
+        <nav className="tab-rail overflow-x-auto">
           {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1.5 text-xs rounded-md whitespace-nowrap transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
+              className={`tab-button whitespace-nowrap ${activeTab === tab.id ? 'tab-button-active' : ''}`}
             >
               {tab.icon} {tab.label}
             </button>
@@ -404,9 +400,9 @@ export default function HeliusViz() {
       </div>
 
       {/* Status Bar */}
-      <div className="px-4 py-2 bg-gray-900/60 border-b border-gray-800 flex items-center justify-between">
-        <span className="text-xs text-gray-400">{statusMsg}</span>
-        <span className={`text-xs ${isLoading ? 'text-yellow-400' : 'text-green-400'}`}>
+      <div className="px-4 py-2 border-b border-[color:var(--line)] bg-black/20 flex items-center justify-between">
+        <span className="hint">{statusMsg}</span>
+        <span className={`text-xs ${isLoading ? 'text-[color:var(--amber)]' : 'text-[color:var(--signal)]'}`}>
           {isLoading ? '⏳ loading...' : '✅ idle'}
         </span>
       </div>
@@ -422,12 +418,12 @@ export default function HeliusViz() {
                 placeholder="Enter wallet address..."
                 value={searchAddress}
                 onChange={e => setSearchAddress(e.target.value)}
-                className="flex-1 text-sm bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white"
+                className="input flex-1 text-sm"
               />
               <button
                 onClick={handleAssetSearch}
                 disabled={isLoading}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm text-white disabled:opacity-50"
+                className="btn-primary"
               >
                 {isLoading ? '...' : '🔍 Search'}
               </button>
@@ -468,7 +464,7 @@ export default function HeliusViz() {
         {/* 2. Priority Fee Tab */}
         {activeTab === 'fees' && (
           <div className="space-y-4">
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="mini-panel">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-white">Priority Fee Levels</h3>
                 <span className="text-2xl">⚡</span>
@@ -480,8 +476,8 @@ export default function HeliusViz() {
                     onClick={() => setFeeLevel(level)}
                     className={`p-2 rounded text-xs text-center transition-colors ${
                       feeLevel === level
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700'
+                        ? 'tab-button-active'
+                        : 'bg-black/30 text-gray-400 hover:bg-black/50'
                     }`}
                   >
                     <p className="font-medium capitalize">{level}</p>
@@ -491,21 +487,21 @@ export default function HeliusViz() {
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-400">Selected: <span className="text-purple-400 font-medium">{feeLevel}</span></p>
+                  <p className="text-xs text-gray-400">Selected: <span className="text-[color:var(--signal)] font-medium">{feeLevel}</span></p>
                   <p className="text-lg font-bold text-white">{priorityFee.toLocaleString()} <span className="text-sm font-normal text-gray-400">μLamports/CU</span></p>
                 </div>
                 <button
                   onClick={handleEstimateFee}
                   disabled={isLoading}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm text-white"
+                  className="btn-primary"
                 >
                   {isLoading ? '⏳' : 'Refresh'}
                 </button>
               </div>
             </div>
-            <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
+            <div className="mini-panel">
               <p className="text-xs text-gray-400">
-                💡 Priority fee for <span className="text-purple-300">JUP6L...V4</span> (Jupiter V6):
+                Priority fee for <span className="text-[color:var(--signal)]">JUP6L...V4</span> (Jupiter V6):
                 {mode === 'live' ? ' live estimate from Helius API' : ' demo estimate'}
               </p>
             </div>
@@ -517,7 +513,7 @@ export default function HeliusViz() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-semibold text-white">Enhanced Transactions</h3>
-              <button onClick={handleFetchTransactions} disabled={isLoading} className="text-xs text-purple-400 hover:text-purple-300">
+              <button onClick={handleFetchTransactions} disabled={isLoading} className="text-xs text-[color:var(--signal)] hover:text-[color:var(--paper)]">
                 {isLoading ? '⏳' : '↻ Refresh'}
               </button>
             </div>
@@ -558,7 +554,7 @@ export default function HeliusViz() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-semibold text-white">Webhook Management</h3>
-              <button onClick={handleFetchWebhooks} disabled={isLoading} className="text-xs text-purple-400 hover:text-purple-300">
+              <button onClick={handleFetchWebhooks} disabled={isLoading} className="text-xs text-[color:var(--signal)] hover:text-[color:var(--paper)]">
                 {isLoading ? '⏳' : '↻ Fetch'}
               </button>
             </div>
@@ -590,7 +586,7 @@ export default function HeliusViz() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-semibold text-white">ZK Compression Indexer</h3>
-              <button onClick={handleZkCheck} disabled={isLoading} className="text-xs text-purple-400 hover:text-purple-300">
+              <button onClick={handleZkCheck} disabled={isLoading} className="text-xs text-[color:var(--signal)] hover:text-[color:var(--paper)]">
                 {isLoading ? '⏳' : '↻ Check'}
               </button>
             </div>
@@ -624,7 +620,7 @@ export default function HeliusViz() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-semibold text-white">Stake Accounts</h3>
-              <button onClick={handleStaking} disabled={isLoading} className="text-xs text-purple-400 hover:text-purple-300">
+              <button onClick={handleStaking} disabled={isLoading} className="text-xs text-[color:var(--signal)] hover:text-[color:var(--paper)]">
                 {isLoading ? '⏳' : '↻ Load'}
               </button>
             </div>
@@ -678,7 +674,7 @@ export default function HeliusViz() {
               </div>
               <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all"
+                  className="h-full rounded-full transition-all bg-[linear-gradient(90deg,var(--signal),var(--paper))]"
                   style={{ width: `${networkPerf.epochProgress}%` }}
                 />
               </div>
@@ -722,10 +718,10 @@ export default function HeliusViz() {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-2 bg-gray-900/60 border-t border-gray-800 flex items-center justify-between text-xs text-gray-500">
+      <div className="px-4 py-2 border-t border-[color:var(--line)] bg-black/20 flex items-center justify-between text-xs text-gray-500">
         <span>
           🛰️ HeliusViz · {mode === 'demo' ? '🎮 Demo Data' : '🔴 Live Helius APIs'} · 
-          <span className="text-purple-400 ml-1">
+          <span className="text-[color:var(--signal)] ml-1">
             {mode === 'live' && apiKey ? `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}` : 'no API key'}
           </span>
         </span>

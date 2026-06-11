@@ -6,82 +6,65 @@ import './App.css';
 function App() {
   return (
     <WalletProvider>
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
-        {/* Header */}
-        <header className="border-b border-gray-800 bg-black/50 backdrop-blur-xl">
-          <div className="container mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">🔒</span>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
-                    Dark Wallet
-                  </h1>
-                  <p className="text-xs text-gray-400">Privacy DeFi for Solana</p>
-                </div>
+      <div className="app-shell">
+        <header className="topbar">
+          <div className="topbar-inner">
+            <div className="brand">
+              <div className="brand-mark" aria-hidden="true">
+                <span>ZW</span>
               </div>
-
-              <WalletMultiButton className="!bg-gradient-to-r !from-purple-600 !to-indigo-600 hover:!from-purple-700 hover:!to-indigo-700" />
+              <div>
+                <h1 className="brand-title">ZOLana Dark Wallet</h1>
+                <p className="brand-subtitle">Sapling discipline / Solana speed / Agent guarded</p>
+              </div>
             </div>
+
+            <WalletMultiButton />
           </div>
         </header>
 
-        {/* Main Content */}
-        <main className="container mx-auto px-6 py-8">
+        <main className="app-main">
           <Dashboard />
         </main>
 
-        {/* Footer */}
-        <footer className="border-t border-gray-800 bg-black/30 backdrop-blur-xl mt-16">
-          <div className="container mx-auto px-6 py-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <footer className="footer-vault">
+          <div className="footer-inner">
+            <div className="footer-grid">
               <div>
-                <h3 className="text-lg font-bold mb-3 bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
-                  🔒 Dark Wallet
-                </h3>
-                <p className="text-sm text-gray-400">
-                  Zcash Sapling-compatible privacy wallet for Solana
+                <h3 className="footer-title">Cold Path</h3>
+                <p className="footer-copy">
+                  Paper-wallet custody, shielded-note discipline, and Solana Memo intent anchors in one operator surface.
                 </p>
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold mb-3 text-gray-300">Features</h4>
-                <ul className="text-sm text-gray-400 space-y-2">
-                  <li>• Shielded Transactions</li>
-                  <li>• Private Swaps (Jupiter)</li>
-                  <li>• 180x Faster than Zcash</li>
-                  <li>• 50x Lower Fees</li>
+                <h4 className="footer-title">Rails</h4>
+                <ul className="footer-list">
+                  <li>Shield / unshield intent anchors</li>
+                  <li>x402, AP2, and M2M receipt handoff</li>
+                  <li>EVM verifier proof export</li>
+                  <li>Helius RPC ready</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold mb-3 text-gray-300">Links</h4>
-                <ul className="text-sm text-gray-400 space-y-2">
+                <h4 className="footer-title">Docs</h4>
+                <ul className="footer-list">
                   <li>
-                    <a href="https://docs.darkwallet.io" className="hover:text-purple-400 transition">
-                      Documentation
-                    </a>
+                    <a href="https://docs.darkwallet.io">Documentation</a>
                   </li>
                   <li>
-                    <a href="https://github.com/dark-protocol" className="hover:text-purple-400 transition">
-                      GitHub
-                    </a>
+                    <a href="https://github.com/dark-protocol">GitHub</a>
                   </li>
                   <li>
-                    <a href="https://discord.gg/darkwallet" className="hover:text-purple-400 transition">
-                      Discord
-                    </a>
+                    <a href="https://discord.gg/darkwallet">Discord</a>
                   </li>
                 </ul>
               </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-gray-800 text-center">
-              <p className="text-sm text-gray-500">
-                © 2025 Dark Protocol. Apache 2.0 License. Privacy is a right, not a privilege.
-              </p>
+            <div className="footer-bottom">
+              © 2025 Dark Protocol. Apache 2.0 License. Secrets stay local; proofs travel.
             </div>
           </div>
         </footer>
