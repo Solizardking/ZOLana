@@ -54,6 +54,14 @@ curl -X POST http://127.0.0.1:4020/rail/authorize \
 - rail kind matches `x402-http-402`, `ap2-mandate`, or `m2m-session`
 - receipt ID, amount, recipient, commitment, Solana signature, cluster, EVM
   digest, chain ID, and verifier contract match
+- EVM intent proof digest recomputes from the EIP-712-style payload
+- authorization ID recomputes from the rail envelope
+- replay key recomputes from receipt ID, nonce, Solana signature, EVM digest,
+  and expiry
+- AP2 constraints match amount, recipient, nonce, expiry, and proof
+  requirements
+- M2M binding digest recomputes from receipt ID, amount, commitment, and EVM
+  digest
 - authorization has not expired
 - replay key is consumed once per process
 

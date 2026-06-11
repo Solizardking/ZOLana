@@ -48,6 +48,102 @@ export function stableDigest(value) {
   return `0x${createHash('sha256').update(value).digest('hex')}`;
 }
 
+export function stableHex(input, bytes = 32) {
+  const output = new Uint8Array(bytes);
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+
+  for (let index = 0; index < input.length; index += 1) {
+    const code = input.charCodeAt(index);
+    h1 ^= code;
+    h1 = Math.imul(h1, 0x01000193);
+    h2 ^= code + index;
+    h2 = Math.imul(h2, 0x85ebca6b);
+  }
+
+  for (let index = 0; index < output.length; index += 1) {
+    h1 ^= h2 + index;
+    h1 = Math.imul(h1, 0xc2b2ae35);
+    h2 ^= h1 >>> 13;
+    output[index] = (h1 ^ h2 ^ (h1 >>> 16)) & 0xff;
+  }
+
+  return Array.from(output, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function fallbackMemoHash(proof) {
+  return proof.memoHash ?? (proof.memo ? `0x${stableHex(proof.memo, 16)}` : '0x');
+}
+
+function expectedAuthorizationId(auth) {
+  const { authorizationId, ...withoutId } = auth;
+  return `rail_${auth.rail}_${stableHex(JSON.stringify(withoutId), 16)}`;
+}
+
+function expectedReplayKey(proof, auth) {
+  return `0x${stableHex([
+    proof.receiptId,
+    proof.nonce,
+    proof.solanaAnchor?.signature ?? '',
+    proof.evmIntentProof?.digest ?? '',
+    String(auth.expiresAt),
+  ].join('|'))}`;
+}
+
+function expectedM2MBindingDigest(proof) {
+  return `0x${stableHex([
+    proof.receiptId,
+    proof.amountLamports,
+    proof.commitmentHex,
+    proof.evmIntentProof?.digest ?? '',
+  ].join('|'))}`;
+}
+
+function validateEvmIntentProof(proof) {
+  const errors = [];
+  const evm = proof.evmIntentProof;
+  const eip712 = evm?.eip712;
+  const message = eip712?.message;
+
+  if (evm?.domain !== 'zolana.dark.evm-intent') errors.push('invalid EVM intent proof domain');
+  if (evm?.version !== '1') errors.push('invalid EVM intent proof version');
+  if (!eip712 || typeof eip712 !== 'object') errors.push('evmIntentProof.eip712 is required');
+  if (!message || typeof message !== 'object') errors.push('evmIntentProof.eip712.message is required');
+
+  if (eip712) {
+    const digest = `0x${stableHex(JSON.stringify(eip712))}`;
+    if (evm?.digest !== digest) {
+      errors.push(`evmIntentProof.digest: expected ${digest}, got ${String(evm?.digest)}`);
+    }
+  }
+
+  if (message) {
+    const checks = [
+      ['evm.message.receiptId', message.receiptId, proof.receiptId],
+      ['evm.message.rail', message.rail, proof.rail],
+      ['evm.message.settlement', message.settlement, proof.settlement],
+      ['evm.message.proofLayer', message.proofLayer, proof.proofLayer],
+      ['evm.message.durableReceipt', message.durableReceipt, proof.durableReceipt],
+      ['evm.message.recipient', message.recipient, proof.recipient],
+      ['evm.message.amountLamports', message.amountLamports, proof.amountLamports],
+      ['evm.message.commitmentHex', message.commitmentHex, proof.commitmentHex],
+      ['evm.message.nonce', message.nonce, proof.nonce],
+      ['evm.message.memoHash', message.memoHash, fallbackMemoHash(proof)],
+      ['evm.message.solanaSignature', message.solanaSignature, proof.solanaAnchor?.signature ?? ''],
+      ['evm.message.solanaCluster', message.solanaCluster, proof.solanaAnchor?.cluster ?? ''],
+      ['evm.message.createdAt', message.createdAt, String(proof.createdAt)],
+    ];
+
+    for (const [field, actual, expected] of checks) {
+      if (actual !== expected) {
+        errors.push(`${field}: expected ${String(expected)}, got ${String(actual)}`);
+      }
+    }
+  }
+
+  return errors;
+}
+
 export function validateRailRequest(body, options = {}) {
   const now = options.now ?? Date.now();
   const proof = body?.proofPayload;
@@ -69,6 +165,10 @@ export function validateRailRequest(body, options = {}) {
   if (!auth.durableReceipt) errors.push('rail authorization must be durable');
   if (!auth.replayKey) errors.push('replayKey is required');
   if (auth.expiresAt <= now) errors.push('rail authorization is expired');
+  if (auth.authorizationId !== expectedAuthorizationId(auth)) errors.push('authorizationId mismatch');
+  if (auth.replayKey !== expectedReplayKey(proof, auth)) errors.push('replayKey mismatch');
+
+  errors.push(...validateEvmIntentProof(proof));
 
   const checks = [
     ['receiptId', auth.receiptId, proof.receiptId],
@@ -97,16 +197,25 @@ export function validateRailRequest(body, options = {}) {
     if (auth.x402?.statusCode !== 402) errors.push('x402 statusCode must be 402');
     if (auth.x402?.paymentRequiredHeader !== 'PAYMENT-REQUIRED') errors.push('x402 payment required header mismatch');
     if (auth.x402?.paymentSignatureHeader !== 'PAYMENT-SIGNATURE') errors.push('x402 payment signature header mismatch');
+    if (auth.x402?.payTo !== proof.recipient) errors.push('x402 payTo mismatch');
+    if (auth.x402?.maxAmountLamports !== proof.amountLamports) errors.push('x402 amount mismatch');
   }
 
   if (auth.rail === 'ap2') {
     if (!auth.ap2?.constraints?.requireSolanaMemoVerification) errors.push('ap2 requires Solana Memo verification');
     if (!auth.ap2?.constraints?.requireEvmIntentProof) errors.push('ap2 requires EVM intent proof');
+    if (auth.ap2?.constraints?.maxAmountLamports !== proof.amountLamports) errors.push('ap2 amount mismatch');
+    if (auth.ap2?.constraints?.recipient !== proof.recipient) errors.push('ap2 recipient mismatch');
+    if (auth.ap2?.constraints?.nonce !== proof.nonce) errors.push('ap2 nonce mismatch');
+    if (auth.ap2?.constraints?.expiresAt !== auth.expiresAt) errors.push('ap2 expiry mismatch');
   }
 
   if (auth.rail === 'm2m') {
     if (auth.m2m?.replayKey !== auth.replayKey) errors.push('m2m replay key mismatch');
-    if (!auth.m2m?.bindingDigest) errors.push('m2m binding digest is required');
+    const bindingDigest = expectedM2MBindingDigest(proof);
+    if (auth.m2m?.bindingDigest !== bindingDigest) {
+      errors.push(`m2m binding digest mismatch: expected ${bindingDigest}, got ${String(auth.m2m?.bindingDigest)}`);
+    }
   }
 
   return {
