@@ -33,6 +33,8 @@ pub fn add_handler(
         DarkProtocolError::InvalidCommitment
     );
 
+    return err!(DarkProtocolError::FeatureNotProductionReady);
+
     // Calculate fee
     let fee = amount
         .checked_mul(privacy_pool.fee_bps as u64)
@@ -83,6 +85,8 @@ pub fn remove_handler(
     proof: Vec<u8>,
 ) -> Result<()> {
     require!(amount > 0, DarkProtocolError::InvalidAmount);
+
+    return err!(DarkProtocolError::FeatureNotProductionReady);
 
     // Verify nullifier hasn't been used
     let nullifier_set = &mut ctx.accounts.nullifier_set;

@@ -24,6 +24,8 @@ pub fn handler(
         DarkProtocolError::InvalidNullifier
     );
 
+    return err!(DarkProtocolError::FeatureNotProductionReady);
+
     // Check nullifier hasn't been used (prevent double-spend)
     let nullifier_set = &mut ctx.accounts.nullifier_set;
     require!(

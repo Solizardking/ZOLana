@@ -24,6 +24,8 @@ pub fn handler(
         DarkProtocolError::InvalidCommitment
     );
 
+    return err!(DarkProtocolError::FeatureNotProductionReady);
+
     // Transfer tokens from user to pool
     let transfer_ctx = CpiContext::new(
         ctx.accounts.token_program.to_account_info(),

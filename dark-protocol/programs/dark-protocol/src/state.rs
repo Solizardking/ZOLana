@@ -357,7 +357,7 @@ impl anchor_lang::AnchorDeserialize for PrivateSwapRoute {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
 pub enum PrivacyLevel {
     /// Full privacy - complete shielding
     Full,
@@ -365,59 +365,4 @@ pub enum PrivacyLevel {
     Partial,
     /// Minimal privacy - only counterparty hidden
     Minimal,
-}
-
-impl anchor_lang::AnchorSerialize for PrivacyLevel {
-    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        (*self as u8).serialize(writer)
-    }
-}
-
-impl anchor_lang::AnchorDeserialize for PrivacyLevel {
-    fn deserialize(buf: &mut &[u8]) -> std::io::Result<Self> {
-        let discriminant = u8::deserialize(buf)?;
-        match discriminant {
-            0 => Ok(PrivacyLevel::Full),
-            1 => Ok(PrivacyLevel::Partial),
-            2 => Ok(PrivacyLevel::Minimal),
-            _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid enum discriminant")),
-        }
-    }
-
-    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
-        let discriminant = u8::deserialize_reader(reader)?;
-        match discriminant {
-            0 => Ok(PrivacyLevel::Full),
-            1 => Ok(PrivacyLevel::Partial),
-            2 => Ok(PrivacyLevel::Minimal),
-            _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid enum discriminant")),
-        }
-    }
-}
-
-impl anchor_lang::idl::IdlBuild for PrivacyLevel {
-    fn insert_types(_types: &mut std::collections::BTreeMap<String, Vec<anchor_lang::idl::IdlTypeDefinition>>) {
-        _types.insert("privacy_level".to_string(), vec![
-            anchor_lang::idl::IdlTypeDefinition {
-                name: "privacy_level".to_string(),
-                variants: Some(vec![
-                    anchor_lang::idl::IdlVariant {
-                        name: "full".to_string(),
-                        fields: None,
-                    },
-                    anchor_lang::idl::IdlVariant {
-                        name: "partial".to_string(),
-                        fields: None,
-                    },
-                    anchor_lang::idl::IdlVariant {
-                        name: "minimal".to_string(),
-                        fields: None,
-                    },
-                ]),
-                ty: anchor_lang::idl::IdlDefinedType::Enum {
-                    generics: std::vec::Vec::new(),
-                },
-            },
-        ]);
-    }
 }

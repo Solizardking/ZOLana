@@ -13,6 +13,12 @@ pub enum DarkProtocolError {
     
     #[msg("Invalid zero-knowledge proof")]
     InvalidZKProof,
+
+    #[msg("Invalid proof")]
+    InvalidProof,
+
+    #[msg("Feature is not production-ready")]
+    FeatureNotProductionReady,
     
     #[msg("Invalid commitment")]
     InvalidCommitment,
@@ -25,6 +31,15 @@ pub enum DarkProtocolError {
     
     #[msg("Amount exceeds maximum allowed")]
     AmountTooLarge,
+
+    #[msg("Invalid amount")]
+    InvalidAmount,
+
+    #[msg("Amount below pool minimum")]
+    AmountTooLow,
+
+    #[msg("Amount above pool maximum")]
+    AmountTooHigh,
     
     #[msg("Amount below minimum required")]
     AmountTooSmall,
@@ -88,6 +103,12 @@ pub enum DarkProtocolError {
     
     #[msg("Computation overflow")]
     ComputationOverflow,
+
+    #[msg("Arithmetic overflow")]
+    Overflow,
+
+    #[msg("Arithmetic underflow")]
+    Underflow,
     
     #[msg("Invalid public input")]
     InvalidPublicInput,
@@ -100,7 +121,40 @@ pub enum DarkProtocolError {
     
     #[msg("Viewing key mismatch")]
     ViewingKeyMismatch,
+
+    #[msg("Invalid viewing key")]
+    InvalidViewingKey,
     
     #[msg("Spending key verification failed")]
     SpendingKeyVerificationFailed,
+
+    #[msg("Invalid input count")]
+    InvalidInputCount,
+
+    #[msg("Invalid output count")]
+    InvalidOutputCount,
+
+    #[msg("Invalid TEE attestation")]
+    InvalidAttestation,
+
+    #[msg("Invalid capabilities")]
+    InvalidCapabilities,
+
+    #[msg("Capabilities payload too large")]
+    CapabilitiesTooLarge,
+
+    #[msg("AI agent is not active")]
+    AgentNotActive,
+
+    #[msg("Invalid action type")]
+    InvalidActionType,
+
+    #[msg("Insufficient liquidity")]
+    InsufficientLiquidity,
+
+    #[msg("Jupiter API error")]
+    JupiterApiError,
+
+    #[msg("Invalid token mint")]
+    InvalidMint,
 }

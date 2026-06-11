@@ -34,6 +34,8 @@ pub fn handler(
         DarkProtocolError::InvalidCommitment
     );
 
+    return err!(DarkProtocolError::FeatureNotProductionReady);
+
     // Verify zero-knowledge proof
     // Proof must demonstrate:
     // 1. Ownership of input tokens (via nullifier)

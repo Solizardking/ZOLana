@@ -20,6 +20,8 @@ pub fn register_handler(
         DarkProtocolError::CapabilitiesTooLarge
     );
 
+    return err!(DarkProtocolError::FeatureNotProductionReady);
+
     // Verify TEE attestation
     // In production, this would verify:
     // 1. Intel SGX or AMD SEV attestation
@@ -64,6 +66,8 @@ pub fn execute_handler(
     
     // Verify proof of execution in TEE
     require!(!proof.is_empty(), DarkProtocolError::InvalidProof);
+
+    return err!(DarkProtocolError::FeatureNotProductionReady);
     
     // TODO: Verify TEE execution proof
     // verify_tee_execution_proof(&proof, &encrypted_params, action_type)?;

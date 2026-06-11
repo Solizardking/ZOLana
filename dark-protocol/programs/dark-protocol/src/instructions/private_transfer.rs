@@ -27,6 +27,8 @@ pub fn handler(
         DarkProtocolError::InvalidOutputCount
     );
 
+    return err!(DarkProtocolError::FeatureNotProductionReady);
+
     // Verify all nullifiers are unique and not previously spent
     let nullifier_set = &mut ctx.accounts.nullifier_set;
     for nullifier in &input_nullifiers {

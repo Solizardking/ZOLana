@@ -23,6 +23,8 @@ pub fn create_handler(
         DarkProtocolError::InvalidCommitment
     );
 
+    return err!(DarkProtocolError::FeatureNotProductionReady);
+
     let shielded_address = &mut ctx.accounts.shielded_address;
     shielded_address.owner = *ctx.accounts.payer.key;
     shielded_address.spending_key_commitment = spending_key_commitment;
