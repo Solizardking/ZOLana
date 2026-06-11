@@ -96,12 +96,17 @@ How the last-November Zcash-to-Solana port works:
    `RAIL_WORKER_URL` or `VITE_RAIL_WORKER_URL` is configured, then refresh the
    worker ledger status from the paper-wallet receipt row.
 10. The rail worker can independently verify the Solana Memo anchor through
-   Helius or another Solana RPC before consuming replay keys or forwarding to a
-   settlement backend.
-11. The EVM verifier now has a relay CLI that converts wallet proof payloads
+    Helius or another Solana RPC before consuming replay keys or forwarding to a
+    settlement backend.
+11. After validation and Solana Memo verification, the rail worker now returns a
+    sanitized `evmVerifierPlan` with verifier address, digest, verified slot,
+    proof-file placeholder, and sign/submit command lines. Durable rail-worker
+    ledgers store only readiness fields and plan digest, not full proof payloads,
+    recipients, or amounts.
+12. The EVM verifier now has a relay CLI that converts wallet proof payloads
     into `cast send recordIntentProof(...)` calls, keeping broadcast dry-run by
     default and requiring an explicit EVM signer signature.
-12. The verifier package also has a signer CLI that derives the verifier digest
+13. The verifier package also has a signer CLI that derives the verifier digest
     with `cast call hashIntent(...)` and signs it with a separate
     `EVM_INTENT_PRIVATE_KEY`, keeping the paper wallet free of EVM keys.
 

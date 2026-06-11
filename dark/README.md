@@ -78,9 +78,9 @@ M2M_SETTLEMENT_URL=
 The current implementation is production-shaped but honest about settlement.
 Solana Memo anchors, durable local shielded-note state, durable receipts, rail
 authorization exports, direct wallet submission to the rail worker, independent
-worker-side Solana Memo verification, EVM verifier tests, dry-run-first EVM proof
-signing and relay scripts, durable rail-worker replay/settlement state, and
-backend adapter hooks exist. A live x402
+worker-side Solana Memo verification, sanitized rail-worker EVM verifier handoff
+plans, EVM verifier tests, dry-run-first EVM proof signing and relay scripts,
+durable rail-worker replay/settlement state, and backend adapter hooks exist. A live x402
 facilitator, AP2 mandate runner, or M2M settlement backend must be supplied
 through the env vars above before the system should claim final payment
 settlement.

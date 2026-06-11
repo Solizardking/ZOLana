@@ -122,6 +122,28 @@ The endpoint can also derive a sanitized context from an exported wallet
 `proofPayload` plus `railAuthorization`. In that mode it fingerprints the
 recipient and memo hash before planning.
 
+## EVM Verifier Handoff
+
+Accepted `/rail/authorize` responses include `evmVerifierPlan` when EVM proofing
+is required or configured. The plan is created only after local validation and
+Solana Memo verification succeed. It includes verifier address, EVM chain ID,
+intent digest, verified Solana slot, Solana signature, proof-file placeholder,
+and dry-run-first command lines for:
+
+- `dark-protocol/evm-verifier/scripts/sign-intent-proof.mjs`
+- `dark-protocol/evm-verifier/scripts/submit-intent-proof.mjs`
+
+The handoff does not store full proof payloads, recipients, amounts, private
+keys, or EVM signatures in the rail ledger. Durable ledger entries store only
+sanitized readiness fields such as `evmVerifierReady`,
+`evmVerifierStatus`, `evmVerifierPlanDigest`, and
+`evmVerifierSolanaSlot`.
+
+Backends configured through `X402_FACILITATOR_URL`, `AP2_MANDATE_RUNNER_URL`,
+or `M2M_SETTLEMENT_URL` receive the same sanitized `evmVerifierPlan` inside
+`localVerification`, so a live facilitator can queue EVM intent proofing without
+recomputing wallet internals.
+
 ## What It Enforces
 
 - `proofPayload.domain === "zolana.dark.private-payment"`

@@ -234,6 +234,13 @@ test('valid x402 rail authorization is accepted and consumes replay key', async 
   assert.equal(first.status, 202);
   assert.equal(first.mode, 'intent-only');
   assert.match(first.headers['PAYMENT-SIGNATURE'], /^rail_x402_/);
+  assert.equal(first.evmVerifierPlan.ready, true);
+  assert.equal(first.evmVerifierPlan.status, 'ready');
+  assert.equal(first.evmVerifierPlan.verifier, '0x0000000000000000000000000000000000000402');
+  assert.equal(first.evmVerifierPlan.solanaSlot, 12345);
+  assert.match(first.evmVerifierPlan.signCommand, /sign-intent-proof\.mjs/);
+  assert.match(first.evmVerifierPlan.submitCommand, /record|submit-intent-proof\.mjs/);
+  assert.doesNotMatch(JSON.stringify(first.evmVerifierPlan), /zsol1receiver|250000000/);
 
   const replay = await processRailRequest(fixture('x402'), state, { now: 1760000003000 });
   assert.equal(replay.ok, false);
@@ -347,6 +354,10 @@ test('file-backed rail store persists replay and sanitized settlement ledger acr
   assert.equal(ledger.settlements[0].settlementStatus, 'intent-only');
   assert.equal(ledger.settlements[0].recipient, undefined);
   assert.equal(ledger.settlements[0].amountLamports, undefined);
+  assert.equal(ledger.settlements[0].evmVerifierReady, true);
+  assert.equal(ledger.settlements[0].evmVerifierStatus, 'ready');
+  assert.equal(ledger.settlements[0].evmVerifierSolanaSlot, 12345);
+  assert.match(ledger.settlements[0].evmVerifierPlanDigest, /^0x[a-f0-9]{64}$/);
 
   const restartedState = createWorkerState({ storePath });
   assert.equal(restartedState.replayStore.getSettlement(accepted.authorizationId).receiptId, accepted.receiptId);
@@ -411,6 +422,33 @@ test('configured settlement backend is called and normalized', async () => {
   assert.equal(sent.rail, 'ap2');
   assert.match(sent.railAuthorization.authorizationId, /^rail_ap2_/);
   assert.equal(sent.localVerification.evmIntentDigest, sent.proofPayload.evmIntentProof.digest);
+  assert.equal(sent.localVerification.evmVerifierPlan.ready, true);
+  assert.equal(sent.localVerification.evmVerifierPlan.solanaSlot, 12345);
+  assert.doesNotMatch(JSON.stringify(sent.localVerification.evmVerifierPlan), /zsol1receiver|250000000/);
+});
+
+test('EVM verifier plan is blocked when verifier contract is missing', async () => {
+  const request = fixture('x402');
+  delete request.railAuthorization.evmVerifyingContract;
+  delete request.proofPayload.evmIntentProof.eip712.domain.verifyingContract;
+  request.proofPayload.evmIntentProof.digest = `0x${stableHex(JSON.stringify(request.proofPayload.evmIntentProof.eip712))}`;
+  request.railAuthorization.evmIntentDigest = request.proofPayload.evmIntentProof.digest;
+  request.railAuthorization.replayKey = `0x${stableHex([
+    request.proofPayload.receiptId,
+    request.proofPayload.nonce,
+    request.proofPayload.solanaAnchor.signature,
+    request.proofPayload.evmIntentProof.digest,
+    String(request.railAuthorization.expiresAt),
+  ].join('|'))}`;
+  request.railAuthorization.authorizationId = authorizationId(request.railAuthorization);
+
+  const result = await processRailRequest(request, createWorkerState(), { now: 1760000002000 });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.evmVerifierPlan.ready, false);
+  assert.equal(result.evmVerifierPlan.status, 'blocked');
+  assert.match(result.evmVerifierPlan.problems.join('\n'), /verifier contract/);
+  assert.equal(result.evmVerifierPlan.signCommand, undefined);
 });
 
 test('backend failure does not consume replay key', async () => {

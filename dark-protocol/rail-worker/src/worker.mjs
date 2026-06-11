@@ -989,6 +989,81 @@ function x402Headers(auth, proof) {
   };
 }
 
+export function createEvmVerifierPlan(auth, proof, solanaVerification = {}) {
+  const solanaSlot = solanaVerification.slot ?? auth.solanaVerifiedSlot ?? proof.solanaVerification?.slot;
+  const verifier = auth.evmVerifyingContract || proof.evmIntentProof?.eip712?.domain?.verifyingContract;
+  const chainId = auth.evmChainId ?? proof.evmIntentProof?.eip712?.domain?.chainId;
+  const digest = auth.evmIntentDigest ?? proof.evmIntentProof?.digest;
+  const required = proof.proofLayer === 'evm' || proof.settlement === 'evm' || Boolean(verifier);
+  const problems = [];
+
+  if (!required) {
+    problems.push('EVM verifier proofing is not required for this receipt');
+  }
+
+  if (!verifier) {
+    problems.push('EVM verifier contract is not configured');
+  }
+
+  if (!digest) {
+    problems.push('EVM intent digest is missing');
+  }
+
+  if (!Number.isSafeInteger(Number(solanaSlot))) {
+    problems.push('Verified Solana slot is required before EVM proof relay');
+  }
+
+  const ready = required && problems.length === 0;
+  const status = ready
+    ? 'ready'
+    : problems.includes('EVM verifier proofing is not required for this receipt')
+      ? 'not-required'
+      : 'blocked';
+
+  const proofPath = `<zolana-private-payment-proof-${proof.receiptId}.json>`;
+  const signCommand = verifier
+    ? `node dark-protocol/evm-verifier/scripts/sign-intent-proof.mjs --proof ${proofPath} --contract ${verifier} --rpc-url "$EVM_RPC_URL" --sign`
+    : undefined;
+  const submitCommand = verifier && Number.isSafeInteger(Number(solanaSlot))
+    ? `node dark-protocol/evm-verifier/scripts/submit-intent-proof.mjs --proof ${proofPath} --contract ${verifier} --signer "$EVM_INTENT_SIGNER" --signature "$EVM_INTENT_SIGNATURE" --solana-slot ${solanaSlot} --execute`
+    : undefined;
+
+  const plan = {
+    required,
+    ready,
+    status,
+    receiptId: proof.receiptId,
+    rail: auth.rail,
+    verifier,
+    chainId,
+    digest,
+    solanaSlot: Number.isSafeInteger(Number(solanaSlot)) ? Number(solanaSlot) : undefined,
+    solanaSignature: auth.solanaAnchorSignature,
+    solanaCluster: auth.solanaCluster,
+    proofPayloadRequired: true,
+    signCommand,
+    submitCommand,
+    problems,
+  };
+
+  return {
+    ...plan,
+    planDigest: stableDigest(JSON.stringify({
+      required: plan.required,
+      ready: plan.ready,
+      status: plan.status,
+      receiptId: plan.receiptId,
+      rail: plan.rail,
+      verifier: plan.verifier,
+      chainId: plan.chainId,
+      digest: plan.digest,
+      solanaSlot: plan.solanaSlot,
+      solanaSignature: plan.solanaSignature,
+      solanaCluster: plan.solanaCluster,
+    })),
+  };
+}
+
 function intentOnlyResult(auth, proof) {
   return {
     ok: true,
@@ -1080,6 +1155,7 @@ export async function callSettlementBackend(auth, proof, config, fetchImpl = glo
           evmIntentDigest: auth.evmIntentDigest,
           evmChainId: auth.evmChainId,
           evmVerifyingContract: auth.evmVerifyingContract,
+          evmVerifierPlan: createEvmVerifierPlan(auth, proof, config.solanaVerification),
         },
       }),
     });
@@ -1150,6 +1226,11 @@ function settlementLedgerEntry(auth, result, now) {
     evmIntentDigest: auth.evmIntentDigest,
     evmChainId: auth.evmChainId,
     evmVerifyingContract: auth.evmVerifyingContract,
+    evmVerifierRequired: result.evmVerifierPlan?.required,
+    evmVerifierReady: result.evmVerifierPlan?.ready,
+    evmVerifierStatus: result.evmVerifierPlan?.status,
+    evmVerifierPlanDigest: result.evmVerifierPlan?.planDigest,
+    evmVerifierSolanaSlot: result.evmVerifierPlan?.solanaSlot,
   };
 }
 
@@ -1251,6 +1332,7 @@ export async function processRailRequest(body, state = createWorkerState(), opti
   if (backend.skipped) {
     const result = intentOnlyResult(auth, proof);
     result.solanaVerification = solanaVerification;
+    result.evmVerifierPlan = createEvmVerifierPlan(auth, proof, solanaVerification);
     result.ledger = consumeReplayAndRecord(state, auth, result, now);
     return result;
   }
@@ -1266,6 +1348,7 @@ export async function processRailRequest(body, state = createWorkerState(), opti
     solanaSignature: auth.solanaAnchorSignature,
     solanaVerification,
     evmIntentDigest: auth.evmIntentDigest,
+    evmVerifierPlan: createEvmVerifierPlan(auth, proof, solanaVerification),
     settlement: backend.settlement,
     headers: x402Headers(auth, proof),
   };
