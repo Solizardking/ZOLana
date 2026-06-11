@@ -4,7 +4,7 @@
 
 ZOLana is the combined system: Dark Protocol, Dark Wallet, DarkSwap, paper-wallet tooling, and the broader Zcash-inspired privacy stack, all organized around Clawd agents that can monitor, route, and operate the chain with policy-driven autonomy.
 
-It is inspired by Gorbaganan and shaped around a simple idea: private money should be fast, programmable, and usable by agents without giving up user custody.
+It is inspired by Gorbagana and shaped around a simple idea: private money should be fast, programmable, and usable by agents without giving up user custody.
 
 SOLtoshi is the outward-facing operator persona. ZOLtoshi is the privacy-first chain persona. Same system, different face.
 
