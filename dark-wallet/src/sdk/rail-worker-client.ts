@@ -1,6 +1,7 @@
 import {
   createPrivatePaymentProofPayload,
   verifyPrivatePaymentProofPayload,
+  type PrivatePaymentEvmVerifierPlan,
   type PrivatePaymentProofOptions,
   type PrivatePaymentProofPayload,
   type PrivatePaymentReceipt,
@@ -40,6 +41,7 @@ export interface RailWorkerAuthorizeResult {
   replayKey?: string;
   solanaSignature?: string;
   evmIntentDigest?: string;
+  evmVerifierPlan?: PrivatePaymentEvmVerifierPlan;
   settlement?: RailWorkerSettlement;
   ledger?: RailWorkerLedgerAck;
   errors?: string[];
@@ -68,6 +70,11 @@ export interface RailWorkerLedgerEntry {
   evmIntentDigest: string;
   evmChainId: number;
   evmVerifyingContract?: string;
+  evmVerifierRequired?: boolean;
+  evmVerifierReady?: boolean;
+  evmVerifierStatus?: string;
+  evmVerifierPlanDigest?: string;
+  evmVerifierSolanaSlot?: number;
 }
 
 export interface RailWorkerSettlementResult {
@@ -266,10 +273,16 @@ export function railWorkerStatusFromAuthorizeResult(result: RailWorkerAuthorizeR
     transactionId: result.settlement?.transactionId,
     ledgerDurable: result.ledger?.durable,
     ledgerRecorded: result.ledger?.recorded,
+    evmVerifierPlan: normalizeEvmVerifierPlan(result.evmVerifierPlan),
   };
 }
 
 export function railWorkerStatusFromLedgerEntry(workerUrl: string, entry: RailWorkerLedgerEntry) {
+  const hasEvmVerifierPlan = typeof entry.evmVerifierRequired === 'boolean'
+    || typeof entry.evmVerifierReady === 'boolean'
+    || typeof entry.evmVerifierStatus === 'string'
+    || typeof entry.evmVerifierPlanDigest === 'string';
+
   return {
     authorizationId: entry.authorizationId,
     workerUrl,
@@ -281,7 +294,50 @@ export function railWorkerStatusFromLedgerEntry(workerUrl: string, entry: RailWo
     transactionId: entry.transactionId,
     ledgerDurable: true,
     ledgerRecorded: true,
+    evmVerifierPlan: hasEvmVerifierPlan ? normalizeEvmVerifierPlan({
+      required: entry.evmVerifierRequired,
+      ready: entry.evmVerifierReady,
+      status: entry.evmVerifierStatus,
+      receiptId: entry.receiptId,
+      rail: entry.rail,
+      verifier: entry.evmVerifyingContract,
+      chainId: entry.evmChainId,
+      digest: entry.evmIntentDigest,
+      solanaSlot: entry.evmVerifierSolanaSlot ?? entry.solanaVerifiedSlot,
+      solanaSignature: entry.solanaAnchorSignature,
+      solanaCluster: entry.solanaCluster,
+      planDigest: entry.evmVerifierPlanDigest,
+    }) : undefined,
   };
 }
 
 export type RailWorkerProofOptions = PrivatePaymentProofOptions;
+
+function normalizeEvmVerifierPlan(plan?: PrivatePaymentEvmVerifierPlan): PrivatePaymentEvmVerifierPlan | undefined {
+  if (!plan || typeof plan !== 'object') {
+    return undefined;
+  }
+
+  const problems = Array.isArray(plan.problems)
+    ? plan.problems.filter((problem): problem is string => typeof problem === 'string')
+    : undefined;
+
+  return {
+    required: typeof plan.required === 'boolean' ? plan.required : undefined,
+    ready: typeof plan.ready === 'boolean' ? plan.ready : undefined,
+    status: typeof plan.status === 'string' ? plan.status : undefined,
+    receiptId: typeof plan.receiptId === 'string' ? plan.receiptId : undefined,
+    rail: typeof plan.rail === 'string' ? plan.rail : undefined,
+    verifier: typeof plan.verifier === 'string' ? plan.verifier : undefined,
+    chainId: typeof plan.chainId === 'number' ? plan.chainId : undefined,
+    digest: typeof plan.digest === 'string' ? plan.digest : undefined,
+    solanaSlot: typeof plan.solanaSlot === 'number' ? plan.solanaSlot : undefined,
+    solanaSignature: typeof plan.solanaSignature === 'string' ? plan.solanaSignature : undefined,
+    solanaCluster: typeof plan.solanaCluster === 'string' ? plan.solanaCluster : undefined,
+    proofPayloadRequired: typeof plan.proofPayloadRequired === 'boolean' ? plan.proofPayloadRequired : undefined,
+    signCommand: typeof plan.signCommand === 'string' ? plan.signCommand : undefined,
+    submitCommand: typeof plan.submitCommand === 'string' ? plan.submitCommand : undefined,
+    problems,
+    planDigest: typeof plan.planDigest === 'string' ? plan.planDigest : undefined,
+  };
+}

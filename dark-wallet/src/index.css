@@ -958,6 +958,126 @@ button:disabled {
   font-size: 0.72rem;
 }
 
+.evm-plan-ticket {
+  margin-top: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(200, 131, 65, 0.34);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(43, 26, 10, 0.42), rgba(3, 6, 4, 0.72)),
+    repeating-linear-gradient(115deg, transparent 0 18px, rgba(240, 223, 184, 0.035) 18px 19px);
+}
+
+.evm-plan-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.evm-plan-header h5 {
+  margin-top: 0.16rem;
+  color: var(--paper-bright);
+  font-size: 0.82rem;
+  font-weight: 950;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.evm-plan-status {
+  flex: 0 0 auto;
+  padding: 0.28rem 0.58rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.evm-plan-status-ready {
+  color: var(--signal);
+}
+
+.evm-plan-status-blocked {
+  color: var(--red);
+}
+
+.evm-plan-status-muted {
+  color: var(--muted);
+}
+
+.evm-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.52rem;
+  margin-top: 0.82rem;
+}
+
+.evm-plan-grid div {
+  padding: 0.62rem;
+  border: 1px solid rgba(240, 223, 184, 0.12);
+  border-radius: 12px;
+  background: rgba(2, 4, 3, 0.42);
+}
+
+.evm-plan-grid span,
+.evm-plan-digest {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.evm-plan-grid span {
+  display: block;
+  margin-bottom: 0.28rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.evm-plan-grid strong {
+  color: var(--paper);
+  font-family: var(--mono-font);
+  font-size: 0.74rem;
+  word-break: break-word;
+}
+
+.evm-plan-digest {
+  margin-top: 0.68rem;
+  font-family: var(--mono-font);
+  word-break: break-all;
+}
+
+.evm-plan-problems {
+  display: grid;
+  gap: 0.34rem;
+  margin-top: 0.72rem;
+  color: #ffb3ad;
+  font-size: 0.72rem;
+}
+
+.evm-plan-problems li {
+  list-style-position: inside;
+}
+
+.evm-plan-commands {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.78rem;
+}
+
+.evm-plan-commands code {
+  display: block;
+  padding: 0.68rem;
+  overflow-x: auto;
+  border: 1px solid rgba(135, 247, 255, 0.2);
+  border-radius: 12px;
+  color: #d6fbff;
+  background: rgba(2, 4, 3, 0.74);
+  font-size: 0.68rem;
+  white-space: pre;
+}
+
 .status-banner {
   padding: 1rem;
   border-radius: 18px;
@@ -1165,6 +1285,7 @@ button:disabled {
 
   .terminal-grid,
   .dashboard-grid,
+  .evm-plan-grid,
   .footer-grid,
   .ops-grid {
     grid-template-columns: 1fr;

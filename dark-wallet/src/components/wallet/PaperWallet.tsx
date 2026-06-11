@@ -63,6 +63,82 @@ function downloadFile(filename: string, content: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+type ReceiptEvmVerifierPlan = NonNullable<NonNullable<PrivatePaymentReceipt['railWorker']>['evmVerifierPlan']>;
+
+function shortenRailValue(value?: string, head = 12, tail = 8): string {
+  if (!value) return 'not recorded';
+  if (value.length <= head + tail + 3) return value;
+  return `${value.slice(0, head)}...${value.slice(-tail)}`;
+}
+
+const EvmVerifierPlanPanel: React.FC<{ plan?: ReceiptEvmVerifierPlan }> = ({ plan }) => {
+  if (!plan) return null;
+
+  const statusClass = plan.ready
+    ? 'evm-plan-status-ready'
+    : plan.status === 'not-required'
+      ? 'evm-plan-status-muted'
+      : 'evm-plan-status-blocked';
+
+  return (
+    <div className="evm-plan-ticket">
+      <div className="evm-plan-header">
+        <div>
+          <p className="section-kicker">EVM Intent Proof</p>
+          <h5>EVM verifier handoff</h5>
+        </div>
+        <span className={`evm-plan-status ${statusClass}`}>
+          {plan.status ?? 'unknown'}
+        </span>
+      </div>
+
+      <div className="evm-plan-grid">
+        <div>
+          <span>Verifier</span>
+          <strong>{shortenRailValue(plan.verifier, 10, 8)}</strong>
+        </div>
+        <div>
+          <span>Chain</span>
+          <strong>{plan.chainId ?? 'unset'}</strong>
+        </div>
+        <div>
+          <span>Intent digest</span>
+          <strong>{shortenRailValue(plan.digest, 12, 10)}</strong>
+        </div>
+        <div>
+          <span>Solana slot</span>
+          <strong>{plan.solanaSlot ?? 'unverified'}</strong>
+        </div>
+      </div>
+
+      {plan.planDigest && (
+        <p className="evm-plan-digest">
+          Plan digest: {shortenRailValue(plan.planDigest, 14, 12)}
+        </p>
+      )}
+
+      {plan.problems && plan.problems.length > 0 && (
+        <ul className="evm-plan-problems">
+          {plan.problems.map((problem) => (
+            <li key={problem}>{problem}</li>
+          ))}
+        </ul>
+      )}
+
+      {(plan.signCommand || plan.submitCommand) && (
+        <div className="evm-plan-commands">
+          {plan.signCommand && (
+            <code>{plan.signCommand}</code>
+          )}
+          {plan.submitCommand && (
+            <code>{plan.submitCommand}</code>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const PaperWallet: React.FC = () => {
   const wallet = useWallet();
   const { publicKey } = wallet;
@@ -831,6 +907,7 @@ const PaperWallet: React.FC = () => {
                       )}
                     </div>
                   )}
+                  <EvmVerifierPlanPanel plan={receipt.railWorker?.evmVerifierPlan} />
                   {receipt.lastError && (
                     <p className="mt-2 text-xs text-red-300">{receipt.lastError}</p>
                   )}

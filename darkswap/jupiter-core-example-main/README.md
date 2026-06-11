@@ -25,7 +25,8 @@ Checkout [Jupiter React Native Example](https://github.com/mercurial-finance/jup
 - Populate these values
 ```
 CLUSTER=mainnet-beta
-WALLET_PRIVATE_KEY=<wallet private key> ## or set it up in src/constants
+WALLET_PRIVATE_KEY=<wallet private key>
+SOLANA_RPC_ENDPOINT=<optional custom RPC URL>
 ```
 - yarn
 - yarn start

@@ -10,14 +10,18 @@ export const ENV: Cluster = (process.env.CLUSTER as Cluster) || "mainnet-beta";
 // Sometimes, your RPC endpoint may reject you if you spam too many RPC calls. Sometimes, your PRC server
 // may have invalid cache and cause problems. Also, a paid RPC server is always recommended.
 export const SOLANA_RPC_ENDPOINT =
-  ENV === "devnet"
+  process.env.SOLANA_RPC_ENDPOINT ||
+  (ENV === "devnet"
     ? "https://api.devnet.solana.com"
-    : "https://neat-hidden-sanctuary.solana-mainnet.discover.quiknode.pro/***REMOVED***";
-    // !IMPORTANT:  This example is using a quiknode free plan that is shared and has limits so should not be used for productions.
+    : "https://api.mainnet-beta.solana.com");
+
 // Wallets
-export const WALLET_PRIVATE_KEY =
-  process.env.WALLET_PRIVATE_KEY || "PASTE YOUR WALLET PRIVATE KEY";
-export const USER_PRIVATE_KEY = bs58.decode(WALLET_PRIVATE_KEY);
+const walletPrivateKey = process.env.WALLET_PRIVATE_KEY;
+if (!walletPrivateKey) {
+  throw new Error("WALLET_PRIVATE_KEY must be set in the environment");
+}
+
+export const USER_PRIVATE_KEY = bs58.decode(walletPrivateKey);
 export const USER_KEYPAIR = Keypair.fromSecretKey(USER_PRIVATE_KEY);
 
 // Token Mints

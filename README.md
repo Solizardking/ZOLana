@@ -94,7 +94,11 @@ How the last-November Zcash-to-Solana port works:
    process restarts without storing full proof payloads, recipients, or amounts.
 9. Dark Wallet can submit an anchored receipt directly to the rail worker when
    `RAIL_WORKER_URL` or `VITE_RAIL_WORKER_URL` is configured, then refresh the
-   worker ledger status from the paper-wallet receipt row.
+   worker ledger status from the paper-wallet receipt row. It now persists and
+   renders the worker's sanitized `evmVerifierPlan` with EVM verifier readiness,
+   plan digest, verified Solana slot, and sign/submit commands so the operator
+   can continue from browser receipt to EVM intent proof without exposing
+   recipient, amount, private keys, signatures, or full proof payloads.
 10. The rail worker can independently verify the Solana Memo anchor through
     Helius or another Solana RPC before consuming replay keys or forwarding to a
     settlement backend.

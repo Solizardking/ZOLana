@@ -102,6 +102,13 @@ submit an anchored receipt directly to the worker and refresh the worker ledger
 status without manually exporting JSON. The wallet stores the returned rail
 authorization ID and sanitized settlement status with the local receipt.
 
+When the worker returns `evmVerifierPlan`, the wallet also stores and displays
+the sanitized EVM verifier handoff on that receipt: verifier address, chain ID,
+intent digest, verified Solana slot, plan digest, readiness state, problems,
+and sign/submit CLI commands. The plan intentionally excludes recipient,
+amount, full proof payloads, private keys, and signatures; operators still
+export the proof payload explicitly before signing or submitting the EVM proof.
+
 This is still an intent/proof/rail primitive for the Dark Protocol path; final
 production settlement depends on the selected deployed Solana programs, EVM
 verifier address, and live rail backend.

@@ -2,6 +2,7 @@ export type PrivatePaymentRail = 'x402' | 'ap2' | 'm2m';
 export type PrivatePaymentSettlement = 'solana' | 'evm';
 export type PrivatePaymentProofLayer = 'solana' | 'evm';
 export type PrivatePaymentStatus = 'queued' | 'anchored' | 'failed';
+export type PrivatePaymentEvmVerifierStatus = 'ready' | 'blocked' | 'not-required' | string;
 
 export interface PrivatePaymentRequest {
   amountSol: number;
@@ -46,6 +47,25 @@ export interface PrivatePaymentSolanaVerification {
   memoMatched: boolean;
 }
 
+export interface PrivatePaymentEvmVerifierPlan {
+  required?: boolean;
+  ready?: boolean;
+  status?: PrivatePaymentEvmVerifierStatus;
+  receiptId?: string;
+  rail?: PrivatePaymentRail | string;
+  verifier?: string;
+  chainId?: number;
+  digest?: string;
+  solanaSlot?: number;
+  solanaSignature?: string;
+  solanaCluster?: string;
+  proofPayloadRequired?: boolean;
+  signCommand?: string;
+  submitCommand?: string;
+  problems?: string[];
+  planDigest?: string;
+}
+
 export interface PrivatePaymentRailWorkerStatus {
   authorizationId: string;
   workerUrl: string;
@@ -59,6 +79,7 @@ export interface PrivatePaymentRailWorkerStatus {
   transactionId?: string;
   ledgerDurable?: boolean;
   ledgerRecorded?: boolean;
+  evmVerifierPlan?: PrivatePaymentEvmVerifierPlan;
   lastError?: string;
 }
 
