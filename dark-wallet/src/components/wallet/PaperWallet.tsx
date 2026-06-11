@@ -10,7 +10,13 @@ import {
   formatNetworkLabel,
   getDarkRuntimeConfig,
 } from '../../utils/runtime';
-import { createDarkClawdAgent } from '../../utils/dark-clawd-agent';
+import {
+  createDarkClawdAgent,
+  createDarkClawdRailPlan,
+  fingerprintPublicValue,
+  formatDarkClawdRailPlan,
+  type DarkClawdRailPlan,
+} from '../../utils/dark-clawd-agent';
 import { createDarkProtocolClient } from '../../sdk/dark-protocol';
 import {
   appendPrivatePaymentReceipt,
@@ -94,6 +100,9 @@ const PaperWallet: React.FC = () => {
   const [checkingRailId, setCheckingRailId] = useState<string | null>(null);
   const [submittingRailId, setSubmittingRailId] = useState<string | null>(null);
   const [refreshingRailId, setRefreshingRailId] = useState<string | null>(null);
+  const [planningRail, setPlanningRail] = useState(false);
+  const [railPlan, setRailPlan] = useState<DarkClawdRailPlan | null>(null);
+  const [railPlanResponse, setRailPlanResponse] = useState('');
 
   const railOptionsForReceipt = (receipt: PrivatePaymentReceipt) => ({
     evmChainId: runtime.evmChainId,
@@ -101,6 +110,78 @@ const PaperWallet: React.FC = () => {
     machinePayer: receipt.solanaAnchor?.payer ?? publicKey?.toBase58(),
     machinePayee: receipt.recipient,
   });
+
+  const railPlanContext = (receipt?: PrivatePaymentReceipt) => ({
+    network: runtime.defaultNetwork,
+    amountSol: receipt?.amountSol ?? Number(paymentAmount),
+    recipientFingerprint: fingerprintPublicValue(
+      receipt?.recipient || paymentRecipient.trim() || publicKey?.toBase58() || 'private-counterparty',
+    ),
+    memoFingerprint: (receipt?.memo || paymentMemo).trim()
+      ? fingerprintPublicValue(receipt?.memo || paymentMemo)
+      : undefined,
+    rail: receipt?.rail ?? rail,
+    settlement: receipt?.settlement ?? settlement,
+    proofLayer: receipt?.proofLayer ?? proofLayer,
+    durableReceipt: receipt?.durableReceipt ?? durableReceipt,
+    heliusConfigured: Boolean(runtime.heliusRpcUrl || runtime.heliusApiKey),
+    evmChainId: runtime.evmChainId,
+    evmVerifierConfigured: Boolean(runtime.evmPrivatePaymentVerifier),
+    railWorkerConfigured: Boolean(runtime.railWorkerUrl),
+    hasSolanaAnchor: Boolean(receipt?.solanaAnchor?.signature),
+    solanaAnchorVerified: Boolean(receipt?.solanaVerification?.memoMatched),
+    railWorkerMode: receipt?.railWorker?.mode,
+    railWorkerSettlementStatus: receipt?.railWorker?.settlementStatus,
+    operatorPrompt: agentPrompt,
+  });
+
+  const handlePlanPaymentRail = async (receipt?: PrivatePaymentReceipt) => {
+    const context = railPlanContext(receipt);
+    const deterministicPlan = createDarkClawdRailPlan(context);
+    setRailPlan(deterministicPlan);
+    setRailPlanResponse(formatDarkClawdRailPlan(deterministicPlan));
+
+    if (!Number.isFinite(context.amountSol) || context.amountSol <= 0) {
+      setStatus('Enter a valid amount before asking Dark Clawd to plan rails');
+      return;
+    }
+
+    if (!agent) {
+      setStatus('Local Dark Clawd policy plan ready. Set XAI_API_KEY for model review.');
+      return;
+    }
+
+    setPlanningRail(true);
+    setStatus('Dark Clawd is reviewing public rail metadata...');
+    try {
+      const response = await agent.reviewPrivatePaymentRail(context);
+      setRailPlanResponse([
+        'xAI review:',
+        response || 'No model response returned',
+        '',
+        'Deterministic guardrail:',
+        formatDarkClawdRailPlan(deterministicPlan),
+      ].join('\n'));
+      setStatus('Dark Clawd rail plan complete');
+    } catch (error: any) {
+      setStatus(`Rail planning agent error: ${error.message}`);
+    } finally {
+      setPlanningRail(false);
+    }
+  };
+
+  const handleApplyRailPlan = () => {
+    if (!railPlan) {
+      setStatus('Ask Dark Clawd for a rail plan before applying recommendations');
+      return;
+    }
+
+    setRail(railPlan.recommendedRail);
+    setSettlement(railPlan.recommendedSettlement);
+    setProofLayer(railPlan.recommendedProofLayer);
+    setDurableReceipt(railPlan.requireDurableReceipt);
+    setStatus(`Applied Dark Clawd plan: ${railPlan.summary}`);
+  };
 
   const handleGenerate = async () => {
     setIsBusy(true);
@@ -566,9 +647,26 @@ const PaperWallet: React.FC = () => {
           <input type="checkbox" checked={durableReceipt} onChange={(event) => setDurableReceipt(event.target.checked)} />
           Durable non-ephemeral receipt
         </label>
-        <button className="btn-primary mt-4" onClick={handleStagePayment}>
-          Stage Private Payment
-        </button>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button className="btn-secondary" onClick={() => void handlePlanPaymentRail()} disabled={planningRail}>
+            {planningRail ? 'Planning...' : 'Plan With Dark Clawd'}
+          </button>
+          <button className="btn-secondary" onClick={handleApplyRailPlan} disabled={!railPlan}>
+            Apply Plan
+          </button>
+          <button className="btn-primary" onClick={handleStagePayment}>
+            Stage Private Payment
+          </button>
+        </div>
+        <p className="hint mt-3">
+          Dark Clawd rail planning sends only public intent metadata and fingerprints:
+          amount, rail, settlement, proof layer, config flags, and anchor status. It never sends secret-key JSON.
+        </p>
+        {railPlanResponse && (
+          <div className="mini-panel mt-4 whitespace-pre-wrap text-sm text-gray-300">
+            {railPlanResponse}
+          </div>
+        )}
         {lastPayment && (
           <div className="mini-panel mt-4 text-sm text-gray-300">
             <p>Receipt: {lastPayment.id}</p>
@@ -621,6 +719,9 @@ const PaperWallet: React.FC = () => {
                       </button>
                       <button className="btn-secondary text-xs" onClick={() => handleCheckRailAuthorization(receipt)} disabled={checkingRailId === receipt.id}>
                         {checkingRailId === receipt.id ? 'Checking...' : 'Check Rail Auth'}
+                      </button>
+                      <button className="btn-secondary text-xs" onClick={() => void handlePlanPaymentRail(receipt)} disabled={planningRail}>
+                        Plan Rail
                       </button>
                       <button
                         className="btn-primary text-xs"

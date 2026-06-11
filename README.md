@@ -41,7 +41,9 @@ What is now wired:
    `HELIUS_RPC_URL`, `HELIUS_API_KEY`, `SOLANA_RPC_URL`, and `SOLANA_CLUSTER`.
 3. `dark-wallet/src/utils/dark-clawd-agent.ts` adds the `XAI_API_KEY` backed
    Dark Clawd sidecar for reviewing public cold-storage metadata and payment
-   posture.
+   posture. It also provides deterministic-plus-xAI private-payment rail
+   planning that can recommend x402/AP2/M2M, Solana/EVM settlement, EVM proof
+   mode, and durable-receipt requirements from public intent metadata only.
 4. `dark-wallet/src/sdk/private-payment.ts` adds durable private payment
    staging for `x402`, `AP2`, and `M2M`, with explicit Solana/EVM settlement,
    lamport-denominated receipts, local commitments, Solana anchor metadata, and

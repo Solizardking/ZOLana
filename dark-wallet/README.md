@@ -33,6 +33,18 @@ The paper-wallet tab can call xAI as a Dark Clawd sidecar when `XAI_API_KEY` is
 configured. The agent receives public metadata and operator instructions only;
 secret key JSON is not sent to the model.
 
+The private-payment primitive also has `Plan With Dark Clawd`. This runs a
+deterministic local policy plan first, then optionally asks xAI to review that
+plan. The planner sees only public intent metadata and fingerprints: amount,
+rail, settlement, proof layer, durable-receipt flag, Helius/RPC configuration,
+EVM verifier availability, rail-worker availability, Solana anchor status, and
+receipt/memo fingerprints. It never sends seed phrases, secret-key JSON, or raw
+private memos.
+
+The planner can recommend switching between `x402`, `AP2`, and `M2M`, forcing
+durable receipt mode, using EVM proofing for high-value or mainnet-beta flows,
+and waiting for Solana Memo verification before rail submission.
+
 ## Private Payment Primitive
 
 The wallet includes a typed staging primitive for:
