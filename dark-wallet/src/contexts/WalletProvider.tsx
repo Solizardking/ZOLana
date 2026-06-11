@@ -5,7 +5,6 @@ import {
 } from '@solana/wallet-adapter-react';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 import { getDarkRuntimeConfig, resolveSolanaRpcUrl } from '../utils/runtime';
 
 interface WalletProviderProps {
@@ -22,7 +21,6 @@ const WalletProvider: FC<WalletProviderProps> = ({ children }) => {
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
     ],
     [],
   );

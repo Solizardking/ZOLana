@@ -21,7 +21,7 @@ SOLtoshi is the outward-facing operator persona. ZOLtoshi is the privacy-first c
 | Swaps | Jupiter aggregation for best-route private swaps and liquidity discovery |
 | Infrastructure | Helius RPC, webhooks, and data APIs for transaction and asset operations |
 | AI Agents | TEE-secured Clawd agents for policy, automation, monitoring, and routing |
-| Wallets | Dark Wallet plus external wallet integrations like Backpack, Phantom, and Solflare |
+| Wallets | Dark Wallet plus external wallet integrations like Backpack and Phantom |
 | Cold Storage | Offline paper-wallet generation for air-gapped key creation and recovery |
 | Autonomy | A chain operator model where agents can manage health, policy, and transaction flows under user-defined rules |
 
