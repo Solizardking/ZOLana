@@ -11,6 +11,7 @@ The canonical implementation lives in `../../dark-wallet/`.
 - Shield, unshield, private transfer, and private-payment intent anchoring
 - xAI Dark Clawd review that receives public metadata only
 - x402/AP2/M2M rail authorization export for external workers
+- Direct rail-worker submission and ledger refresh when `RAIL_WORKER_URL` is set
 
 ## Canonical Files
 
@@ -18,6 +19,7 @@ The canonical implementation lives in `../../dark-wallet/`.
 - `../../dark-wallet/src/sdk/dark-protocol.ts`
 - `../../dark-wallet/src/sdk/private-payment.ts`
 - `../../dark-wallet/src/sdk/rail-authorization.ts`
+- `../../dark-wallet/src/sdk/rail-worker-client.ts`
 - `../../dark-wallet/src/utils/dark-clawd-agent.ts`
 - `../../dark-wallet/src/utils/runtime.ts`
 

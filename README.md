@@ -80,6 +80,9 @@ How the last-November Zcash-to-Solana port works:
 7. The rail worker can now keep a sanitized durable ledger with
    `RAIL_WORKER_STORE_PATH`, so replay protection and settlement status survive
    process restarts without storing full proof payloads, recipients, or amounts.
+8. Dark Wallet can submit an anchored receipt directly to the rail worker when
+   `RAIL_WORKER_URL` or `VITE_RAIL_WORKER_URL` is configured, then refresh the
+   worker ledger status from the paper-wallet receipt row.
 
 Program re-exploration and port mapping:
 
@@ -106,6 +109,8 @@ EVM_CHAIN_ID=1
 EVM_PRIVATE_PAYMENT_VERIFIER=
 RAIL_WORKER_BACKEND_TOKEN=
 RAIL_WORKER_STORE_PATH=.zolana/rail-ledger.json
+RAIL_WORKER_URL=http://127.0.0.1:4020
+RAIL_WORKER_CORS_ORIGIN=http://127.0.0.1:5173
 X402_FACILITATOR_URL=
 AP2_MANDATE_RUNNER_URL=
 M2M_SETTLEMENT_URL=

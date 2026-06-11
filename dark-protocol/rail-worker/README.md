@@ -22,6 +22,7 @@ The server listens on `127.0.0.1:4020` by default.
 ```bash
 RAIL_WORKER_PORT=4020
 RAIL_WORKER_STORE_PATH=.zolana/rail-ledger.json
+RAIL_WORKER_CORS_ORIGIN=http://127.0.0.1:5173
 RAIL_WORKER_BACKEND_TOKEN=optional-shared-secret
 X402_FACILITATOR_URL=https://facilitator.example/authorize
 AP2_MANDATE_RUNNER_URL=https://ap2.example/mandates/run
@@ -39,6 +40,10 @@ replay protection and settlement status survive process restarts. The ledger is
 sanitized: it records authorization IDs, receipt IDs, rails, Solana signatures,
 EVM digests, and settlement IDs/status, not full proof payloads, recipients, or
 amounts.
+
+`RAIL_WORKER_CORS_ORIGIN` defaults to `*`. Set it to the Dark Wallet dev or
+production origin when the browser wallet should submit rail authorizations
+directly.
 
 ```bash
 curl -X POST http://127.0.0.1:4020/rail/authorize \

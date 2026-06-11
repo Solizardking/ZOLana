@@ -18,6 +18,9 @@ import {
   loadPrivatePaymentReceipts,
   markPrivatePaymentAnchored,
   markPrivatePaymentFailed,
+  markPrivatePaymentRailFailed,
+  markPrivatePaymentRailStatus,
+  markPrivatePaymentRailSubmitted,
   markPrivatePaymentVerificationFailed,
   markPrivatePaymentVerified,
   serializePrivatePaymentProofPayload,
@@ -34,6 +37,12 @@ import {
   serializeRailAuthorizationEnvelope,
   verifyRailAuthorizationEnvelope,
 } from '../../sdk/rail-authorization';
+import {
+  getRailWorkerSettlement,
+  railWorkerStatusFromAuthorizeResult,
+  railWorkerStatusFromLedgerEntry,
+  submitRailAuthorizationToWorker,
+} from '../../sdk/rail-worker-client';
 
 function downloadFile(filename: string, content: string): void {
   const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
@@ -83,6 +92,15 @@ const PaperWallet: React.FC = () => {
   const [verifyingReceiptId, setVerifyingReceiptId] = useState<string | null>(null);
   const [checkingProofId, setCheckingProofId] = useState<string | null>(null);
   const [checkingRailId, setCheckingRailId] = useState<string | null>(null);
+  const [submittingRailId, setSubmittingRailId] = useState<string | null>(null);
+  const [refreshingRailId, setRefreshingRailId] = useState<string | null>(null);
+
+  const railOptionsForReceipt = (receipt: PrivatePaymentReceipt) => ({
+    evmChainId: runtime.evmChainId,
+    evmVerifyingContract: runtime.evmPrivatePaymentVerifier,
+    machinePayer: receipt.solanaAnchor?.payer ?? publicKey?.toBase58(),
+    machinePayee: receipt.recipient,
+  });
 
   const handleGenerate = async () => {
     setIsBusy(true);
@@ -226,12 +244,7 @@ const PaperWallet: React.FC = () => {
   const handleCheckRailAuthorization = (receipt: PrivatePaymentReceipt) => {
     setCheckingRailId(receipt.id);
     try {
-      const options = {
-        evmChainId: runtime.evmChainId,
-        evmVerifyingContract: runtime.evmPrivatePaymentVerifier,
-        machinePayer: receipt.solanaAnchor?.payer ?? publicKey?.toBase58(),
-        machinePayee: receipt.recipient,
-      };
+      const options = railOptionsForReceipt(receipt);
       const envelope = createRailAuthorizationEnvelope(receipt, options);
       const verification = verifyRailAuthorizationEnvelope(envelope, receipt, options);
       if (!verification.ok) {
@@ -244,6 +257,111 @@ const PaperWallet: React.FC = () => {
       setStatus(`Rail authorization check error: ${error.message}`);
     } finally {
       setCheckingRailId(null);
+    }
+  };
+
+  const handleSubmitRailAuthorization = async (receipt: PrivatePaymentReceipt) => {
+    if (!runtime.railWorkerUrl) {
+      setStatus('Set RAIL_WORKER_URL or VITE_RAIL_WORKER_URL to submit rail authorizations');
+      return;
+    }
+
+    if (!receipt.solanaAnchor?.signature) {
+      setStatus('Anchor the private-payment receipt on Solana before submitting it to the rail worker');
+      return;
+    }
+
+    setSubmittingRailId(receipt.id);
+    setStatus(`Submitting ${receipt.id} to the ${receipt.rail.toUpperCase()} rail worker...`);
+    try {
+      const result = await submitRailAuthorizationToWorker(receipt, {
+        ...railOptionsForReceipt(receipt),
+        workerUrl: runtime.railWorkerUrl,
+        requireSolanaAnchor: true,
+      });
+
+      if (!result.ok) {
+        const reason = result.errors?.join('; ') || `rail worker returned HTTP ${result.status}`;
+        const failedReceipt = markPrivatePaymentRailFailed(receipt, reason, {
+          authorizationId: result.authorizationId,
+          workerUrl: result.workerUrl,
+          responseStatus: result.status,
+        });
+        const receipts = updatePrivatePaymentReceipt(failedReceipt);
+        setPaymentReceipts(receipts);
+        setLastPayment((current) => current?.id === receipt.id ? failedReceipt : current);
+        setStatus(`Rail worker rejected ${receipt.id}: ${reason}`);
+        return;
+      }
+
+      const submittedReceipt = markPrivatePaymentRailSubmitted(
+        receipt,
+        railWorkerStatusFromAuthorizeResult(result),
+      );
+      const receipts = updatePrivatePaymentReceipt(submittedReceipt);
+      setPaymentReceipts(receipts);
+      setLastPayment((current) => current?.id === receipt.id ? submittedReceipt : current);
+      setStatus(
+        `Rail worker accepted ${result.authorizationId} in ${result.mode ?? 'unknown'} mode; settlement ${result.settlement?.status ?? 'pending'}`,
+      );
+    } catch (error: any) {
+      const failedReceipt = markPrivatePaymentRailFailed(receipt, error.message, {
+        workerUrl: runtime.railWorkerUrl,
+      });
+      const receipts = updatePrivatePaymentReceipt(failedReceipt);
+      setPaymentReceipts(receipts);
+      setLastPayment((current) => current?.id === receipt.id ? failedReceipt : current);
+      setStatus(`Rail worker submit error: ${error.message}`);
+    } finally {
+      setSubmittingRailId(null);
+    }
+  };
+
+  const handleRefreshRailStatus = async (receipt: PrivatePaymentReceipt) => {
+    const authorizationId = receipt.railWorker?.authorizationId;
+    const workerUrl = receipt.railWorker?.workerUrl ?? runtime.railWorkerUrl;
+    if (!authorizationId || !workerUrl) {
+      setStatus('Submit this receipt to the rail worker before refreshing status');
+      return;
+    }
+
+    setRefreshingRailId(receipt.id);
+    setStatus(`Refreshing rail settlement ${authorizationId}...`);
+    try {
+      const result = await getRailWorkerSettlement(workerUrl, authorizationId);
+      if (!result.ok || !result.settlement) {
+        const reason = result.error ?? `rail worker returned HTTP ${result.status}`;
+        const failedReceipt = markPrivatePaymentRailFailed(receipt, reason, {
+          authorizationId,
+          workerUrl: result.workerUrl,
+          responseStatus: result.status,
+        });
+        const receipts = updatePrivatePaymentReceipt(failedReceipt);
+        setPaymentReceipts(receipts);
+        setLastPayment((current) => current?.id === receipt.id ? failedReceipt : current);
+        setStatus(`Rail status refresh failed: ${reason}`);
+        return;
+      }
+
+      const updatedReceipt = markPrivatePaymentRailStatus(
+        receipt,
+        railWorkerStatusFromLedgerEntry(result.workerUrl, result.settlement),
+      );
+      const receipts = updatePrivatePaymentReceipt(updatedReceipt);
+      setPaymentReceipts(receipts);
+      setLastPayment((current) => current?.id === receipt.id ? updatedReceipt : current);
+      setStatus(`Rail status: ${result.settlement.settlementStatus ?? 'pending'} for ${authorizationId}`);
+    } catch (error: any) {
+      const failedReceipt = markPrivatePaymentRailFailed(receipt, error.message, {
+        authorizationId,
+        workerUrl,
+      });
+      const receipts = updatePrivatePaymentReceipt(failedReceipt);
+      setPaymentReceipts(receipts);
+      setLastPayment((current) => current?.id === receipt.id ? failedReceipt : current);
+      setStatus(`Rail status error: ${error.message}`);
+    } finally {
+      setRefreshingRailId(null);
     }
   };
 
@@ -464,6 +582,7 @@ const PaperWallet: React.FC = () => {
                   Kept in this browser only; export payloads for EVM chain {runtime.evmChainId}
                   {runtime.evmPrivatePaymentVerifier ? ` verifier ${runtime.evmPrivatePaymentVerifier.slice(0, 10)}...` : ''}
                   {' '}or anchor the intent on Solana.
+                  {runtime.railWorkerUrl ? ` Rail worker: ${runtime.railWorkerUrl}` : ' Set RAIL_WORKER_URL to submit rails directly.'}
                 </p>
               </div>
               <span className="text-xs text-cyan-300">{paymentReceipts.length} stored</span>
@@ -499,6 +618,29 @@ const PaperWallet: React.FC = () => {
                       </button>
                       <button className="btn-secondary text-xs" onClick={() => handleCheckRailAuthorization(receipt)} disabled={checkingRailId === receipt.id}>
                         {checkingRailId === receipt.id ? 'Checking...' : 'Check Rail Auth'}
+                      </button>
+                      <button
+                        className="btn-primary text-xs"
+                        onClick={() => handleSubmitRailAuthorization(receipt)}
+                        disabled={
+                          !runtime.railWorkerUrl
+                            || !receipt.solanaAnchor
+                            || submittingRailId === receipt.id
+                            || Boolean(receipt.railWorker?.authorizationId && !receipt.railWorker.lastError)
+                        }
+                      >
+                        {receipt.railWorker?.authorizationId && !receipt.railWorker.lastError
+                          ? 'Rail Submitted'
+                          : submittingRailId === receipt.id
+                            ? 'Submitting...'
+                            : 'Submit Rail'}
+                      </button>
+                      <button
+                        className="btn-secondary text-xs"
+                        onClick={() => handleRefreshRailStatus(receipt)}
+                        disabled={!receipt.railWorker?.authorizationId || refreshingRailId === receipt.id}
+                      >
+                        {refreshingRailId === receipt.id ? 'Refreshing...' : 'Rail Status'}
                       </button>
                       <button
                         className="btn-primary text-xs"
@@ -539,6 +681,28 @@ const PaperWallet: React.FC = () => {
                     <p className="mt-2 text-xs text-emerald-300">
                       Verified on slot {receipt.solanaVerification.slot} by {receipt.solanaVerification.payer.slice(0, 8)}...
                     </p>
+                  )}
+                  {receipt.railWorker && (
+                    <div className="mt-2 rounded-md border border-cyan-900/60 bg-cyan-950/20 p-2 text-xs text-cyan-100">
+                      <p className="font-mono break-all">Rail auth: {receipt.railWorker.authorizationId || 'not recorded'}</p>
+                      <p>
+                        Worker: {receipt.railWorker.workerUrl || runtime.railWorkerUrl || 'not configured'} / {receipt.railWorker.mode ?? 'unsubmitted'}
+                      </p>
+                      <p>
+                        Settlement: {receipt.railWorker.settlementStatus ?? 'pending'}
+                        {receipt.railWorker.settled ? ' / settled' : ' / not settled'}
+                        {receipt.railWorker.ledgerDurable ? ' / durable ledger' : ''}
+                      </p>
+                      {receipt.railWorker.settlementId && (
+                        <p className="font-mono break-all">Settlement ID: {receipt.railWorker.settlementId}</p>
+                      )}
+                      {receipt.railWorker.transactionId && (
+                        <p className="font-mono break-all">Transaction ID: {receipt.railWorker.transactionId}</p>
+                      )}
+                      {receipt.railWorker.lastError && (
+                        <p className="text-red-300">Rail error: {receipt.railWorker.lastError}</p>
+                      )}
+                    </div>
                   )}
                   {receipt.lastError && (
                     <p className="mt-2 text-xs text-red-300">{receipt.lastError}</p>

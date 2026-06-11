@@ -9,6 +9,7 @@ export interface DarkRuntimeConfig {
   xaiModel: string;
   evmChainId: number;
   evmPrivatePaymentVerifier?: string;
+  railWorkerUrl?: string;
   defaultNetwork: DarkNetwork;
 }
 
@@ -36,6 +37,7 @@ export function getDarkRuntimeConfig(): DarkRuntimeConfig {
   const evmChainId = Number.parseInt(evmChainIdValue, 10);
   const evmPrivatePaymentVerifier =
     readEnv("EVM_PRIVATE_PAYMENT_VERIFIER") || readEnv("VITE_EVM_PRIVATE_PAYMENT_VERIFIER");
+  const railWorkerUrl = readEnv("RAIL_WORKER_URL") || readEnv("VITE_RAIL_WORKER_URL");
 
   const defaultNetwork = normalizeNetwork(
     readEnv("SOLANA_CLUSTER") ||
@@ -52,6 +54,7 @@ export function getDarkRuntimeConfig(): DarkRuntimeConfig {
     xaiModel,
     evmChainId: Number.isFinite(evmChainId) ? evmChainId : 1,
     evmPrivatePaymentVerifier: evmPrivatePaymentVerifier || undefined,
+    railWorkerUrl: railWorkerUrl || undefined,
     defaultNetwork,
   };
 }

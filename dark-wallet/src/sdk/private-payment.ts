@@ -24,6 +24,7 @@ export interface PrivatePaymentReceipt extends PrivatePaymentRequest {
   nonce: string;
   solanaAnchor?: PrivatePaymentSolanaAnchor;
   solanaVerification?: PrivatePaymentSolanaVerification;
+  railWorker?: PrivatePaymentRailWorkerStatus;
   lastError?: string;
 }
 
@@ -43,6 +44,22 @@ export interface PrivatePaymentSolanaVerification {
   blockTime?: number | null;
   payer: string;
   memoMatched: boolean;
+}
+
+export interface PrivatePaymentRailWorkerStatus {
+  authorizationId: string;
+  workerUrl: string;
+  submittedAt?: number;
+  lastCheckedAt?: number;
+  mode?: 'intent-only' | 'backend';
+  responseStatus?: number;
+  settlementStatus?: string;
+  settled?: boolean;
+  settlementId?: string;
+  transactionId?: string;
+  ledgerDurable?: boolean;
+  ledgerRecorded?: boolean;
+  lastError?: string;
 }
 
 export interface PrivatePaymentEvmIntentProof {
@@ -332,6 +349,69 @@ export function markPrivatePaymentVerificationFailed(
     status: receipt.solanaAnchor ? 'anchored' : 'failed',
     updatedAt,
     lastError: error,
+  };
+}
+
+export function markPrivatePaymentRailSubmitted(
+  receipt: PrivatePaymentReceipt,
+  params: Omit<PrivatePaymentRailWorkerStatus, 'submittedAt' | 'lastError'> & {
+    submittedAt?: number;
+  },
+): PrivatePaymentReceipt {
+  const submittedAt = params.submittedAt ?? Date.now();
+  return {
+    ...receipt,
+    updatedAt: submittedAt,
+    lastError: undefined,
+    railWorker: {
+      ...params,
+      submittedAt,
+      lastError: undefined,
+    },
+  };
+}
+
+export function markPrivatePaymentRailStatus(
+  receipt: PrivatePaymentReceipt,
+  params: Omit<PrivatePaymentRailWorkerStatus, 'submittedAt' | 'lastCheckedAt' | 'lastError'> & {
+    lastCheckedAt?: number;
+  },
+): PrivatePaymentReceipt {
+  const lastCheckedAt = params.lastCheckedAt ?? Date.now();
+  return {
+    ...receipt,
+    updatedAt: lastCheckedAt,
+    lastError: undefined,
+    railWorker: {
+      ...receipt.railWorker,
+      ...params,
+      authorizationId: params.authorizationId,
+      workerUrl: params.workerUrl,
+      lastCheckedAt,
+      lastError: undefined,
+    },
+  };
+}
+
+export function markPrivatePaymentRailFailed(
+  receipt: PrivatePaymentReceipt,
+  error: string,
+  params: Partial<Pick<PrivatePaymentRailWorkerStatus, 'authorizationId' | 'workerUrl' | 'responseStatus'>> = {},
+): PrivatePaymentReceipt {
+  const updatedAt = Date.now();
+  return {
+    ...receipt,
+    updatedAt,
+    lastError: error,
+    railWorker: {
+      ...receipt.railWorker,
+      ...params,
+      authorizationId: params.authorizationId ?? receipt.railWorker?.authorizationId ?? '',
+      workerUrl: params.workerUrl ?? receipt.railWorker?.workerUrl ?? '',
+      responseStatus: params.responseStatus ?? receipt.railWorker?.responseStatus,
+      lastCheckedAt: updatedAt,
+      lastError: error,
+    },
   };
 }
 

@@ -77,6 +77,11 @@ If no backend URL is configured, the worker returns `mode: "intent-only"`. If
 configured, the worker forwards the locally verified request to that live rail
 backend and returns normalized settlement status.
 
+When `RAIL_WORKER_URL` or `VITE_RAIL_WORKER_URL` is set, the paper-wallet tab can
+submit an anchored receipt directly to the worker and refresh the worker ledger
+status without manually exporting JSON. The wallet stores the returned rail
+authorization ID and sanitized settlement status with the local receipt.
+
 This is still an intent/proof/rail primitive for the Dark Protocol path; final
 production settlement depends on the selected deployed Solana programs, EVM
 verifier address, and live rail backend.
@@ -112,11 +117,13 @@ XAI_BASE_URL=
 XAI_MODEL=
 EVM_CHAIN_ID=1
 EVM_PRIVATE_PAYMENT_VERIFIER=
+RAIL_WORKER_URL=http://127.0.0.1:4020
 ```
 
 `HELIUS_RPC_URL` wins when present. Otherwise `HELIUS_API_KEY` builds a Helius
 RPC URL for `devnet` or `mainnet-beta`. `SOLANA_CLUSTER` accepts `devnet` or
-`mainnet-beta`.
+`mainnet-beta`. Prefix the same values with `VITE_` when Vite only exposes
+client-side env through `VITE_*`.
 
 ## Development
 
