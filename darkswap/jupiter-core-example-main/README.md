@@ -1,32 +1,24 @@
-# Jupiter Core Example
-![1*cXNgzu0Pvj4HwOLw4Akwqg](https://user-images.githubusercontent.com/34560707/145749257-e48cb199-521b-476e-9d81-f79bb45ef834.png)
+# Jupiter Swap API Example
 
-<p align="center">
-  <a href="https://jup.ag">Jupiter Aggregator (jup.ag)</a>
-  <br/>
-  The best swap aggregator on Solana. Built for smart traders who like money.
-</p>
-<br/>
+Dependency-free quote/order example for Jupiter Swap API v2.
 
-This repo is an example with our [Jupiter Core SDK](https://www.npmjs.com/package/@jup-ag/core).
+This sample does not read or sign with a private key. It requests an order from
+Jupiter and prints a compact summary. If `TAKER_PUBLIC_KEY` is omitted, Jupiter
+returns a quote without an assembled transaction.
 
-## Integrate with React instead?
-The quickest way to integrate Jupiter with your React UI, use [Jupiter React Hook instead](https://www.npmjs.com/package/@jup-ag/react-hook).
+## Environment
 
-## React Native?
-Checkout [Jupiter React Native Example](https://github.com/mercurial-finance/jupiter-react-native).
-
-## Documentanion
-[Jupiter Documentation](https://docs.jup.ag/).
-
-## Getting started
-- We recommend `yarn` due to `resolutions`
-- Add a `.env` to root
-- Populate these values
+```sh
+JUPITER_API_KEY=<api key>
+INPUT_MINT_ADDRESS=So11111111111111111111111111111111111111112
+OUTPUT_MINT_ADDRESS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+AMOUNT=100000000
+TAKER_PUBLIC_KEY=<optional wallet public key>
 ```
-CLUSTER=mainnet-beta
-WALLET_PRIVATE_KEY=<wallet private key>
-SOLANA_RPC_ENDPOINT=<optional custom RPC URL>
+
+## Run
+
+```sh
+npm run check
+npm run start
 ```
-- yarn
-- yarn start

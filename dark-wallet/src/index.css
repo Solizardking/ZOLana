@@ -1078,6 +1078,126 @@ button:disabled {
   white-space: pre;
 }
 
+.rail-preflight-ticket {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(128, 255, 176, 0.22);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(9, 28, 18, 0.58), rgba(2, 4, 3, 0.82)),
+    radial-gradient(circle at 100% 0%, rgba(135, 247, 255, 0.1), transparent 18rem);
+}
+
+.rail-preflight-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.rail-preflight-header h5 {
+  margin-top: 0.2rem;
+  color: var(--paper-bright);
+  font-family: var(--mono-font);
+  font-size: 0.82rem;
+  font-weight: 950;
+  word-break: break-all;
+}
+
+.rail-preflight-status {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.62rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rail-preflight-status-ready {
+  color: var(--signal);
+}
+
+.rail-preflight-status-warn {
+  color: var(--amber);
+}
+
+.rail-preflight-status-blocked {
+  color: var(--red);
+}
+
+.rail-preflight-grid,
+.rail-preflight-rails {
+  display: grid;
+  gap: 0.58rem;
+  margin-top: 0.9rem;
+}
+
+.rail-preflight-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.rail-preflight-rails {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rail-preflight-grid div,
+.rail-preflight-rails div {
+  min-width: 0;
+  padding: 0.68rem;
+  border: 1px solid rgba(159, 255, 195, 0.13);
+  border-radius: 13px;
+  background: rgba(2, 4, 3, 0.5);
+}
+
+.rail-preflight-grid span,
+.rail-preflight-rails span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rail-preflight-grid strong,
+.rail-preflight-rails strong {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--paper);
+  font-size: 0.78rem;
+  font-weight: 950;
+  word-break: break-word;
+}
+
+.rail-preflight-grid small,
+.rail-preflight-rails small {
+  display: block;
+  margin-top: 0.28rem;
+  overflow: hidden;
+  color: var(--muted-2);
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-preflight-notes,
+.rail-preflight-clean {
+  margin-top: 0.82rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.rail-preflight-notes {
+  display: grid;
+  gap: 0.36rem;
+}
+
+.rail-preflight-blocker {
+  color: #ffb3ad;
+}
+
 .status-banner {
   padding: 1rem;
   border-radius: 18px;
@@ -1286,6 +1406,8 @@ button:disabled {
   .terminal-grid,
   .dashboard-grid,
   .evm-plan-grid,
+  .rail-preflight-grid,
+  .rail-preflight-rails,
   .footer-grid,
   .ops-grid {
     grid-template-columns: 1fr;

@@ -44,11 +44,13 @@ import {
   verifyRailAuthorizationEnvelope,
 } from '../../sdk/rail-authorization';
 import {
+  getRailWorkerPreflight,
   getRailWorkerSettlement,
   planRailWithWorker,
   railWorkerStatusFromAuthorizeResult,
   railWorkerStatusFromLedgerEntry,
   submitRailAuthorizationToWorker,
+  type RailWorkerPreflightResult,
 } from '../../sdk/rail-worker-client';
 
 function downloadFile(filename: string, content: string): void {
@@ -139,6 +141,79 @@ const EvmVerifierPlanPanel: React.FC<{ plan?: ReceiptEvmVerifierPlan }> = ({ pla
   );
 };
 
+const railOrder: PrivatePaymentRail[] = ['x402', 'ap2', 'm2m'];
+
+const RailPreflightPanel: React.FC<{ preflight: RailWorkerPreflightResult }> = ({ preflight }) => {
+  const statusClass = preflight.mode === 'live-ready' || preflight.ready
+    ? 'rail-preflight-status-ready'
+    : preflight.mode === 'blocked'
+      ? 'rail-preflight-status-blocked'
+      : 'rail-preflight-status-warn';
+
+  return (
+    <div className="rail-preflight-ticket">
+      <div className="rail-preflight-header">
+        <div>
+          <p className="section-kicker">Rail Worker Preflight</p>
+          <h5>{preflight.workerUrl}</h5>
+        </div>
+        <span className={`rail-preflight-status ${statusClass}`}>
+          {preflight.mode ?? 'unknown'}
+        </span>
+      </div>
+
+      <div className="rail-preflight-grid">
+        <div>
+          <span>Solana RPC</span>
+          <strong>{preflight.solana?.status ?? 'unknown'}</strong>
+          <small>{preflight.solana?.rpcEndpoint ?? 'no endpoint'}</small>
+        </div>
+        <div>
+          <span>EVM verifier</span>
+          <strong>{preflight.evm?.status ?? 'unknown'}</strong>
+          <small>{preflight.evm?.verifier ? shortenRailValue(preflight.evm.verifier, 10, 8) : 'not configured'}</small>
+        </div>
+        <div>
+          <span>Dark Clawd</span>
+          <strong>{preflight.xai?.status ?? 'unknown'}</strong>
+          <small>{preflight.xai?.model ?? 'local policy'}</small>
+        </div>
+        <div>
+          <span>Replay ledger</span>
+          <strong>{preflight.replayLedger?.status ?? 'unknown'}</strong>
+          <small>{preflight.replayLedger?.durable ? 'durable' : 'memory only'}</small>
+        </div>
+      </div>
+
+      <div className="rail-preflight-rails">
+        {railOrder.map((railName) => {
+          const railStatus = preflight.rails?.[railName];
+          return (
+            <div key={railName}>
+              <span>{railName.toUpperCase()}</span>
+              <strong>{railStatus?.status ?? 'unknown'}</strong>
+              <small>{railStatus?.endpoint ?? 'backend missing'}</small>
+            </div>
+          );
+        })}
+      </div>
+
+      {(preflight.blockers?.length || preflight.warnings?.length) ? (
+        <div className="rail-preflight-notes">
+          {preflight.blockers?.map((item) => (
+            <p key={`blocker-${item}`} className="rail-preflight-blocker">{item}</p>
+          ))}
+          {preflight.warnings?.map((item) => (
+            <p key={`warning-${item}`}>{item}</p>
+          ))}
+        </div>
+      ) : (
+        <p className="rail-preflight-clean">Preflight passed without blockers or warnings.</p>
+      )}
+    </div>
+  );
+};
+
 const PaperWallet: React.FC = () => {
   const wallet = useWallet();
   const { publicKey } = wallet;
@@ -180,6 +255,9 @@ const PaperWallet: React.FC = () => {
   const [planningRail, setPlanningRail] = useState(false);
   const [railPlan, setRailPlan] = useState<DarkClawdRailPlan | null>(null);
   const [railPlanResponse, setRailPlanResponse] = useState('');
+  const [railPreflight, setRailPreflight] = useState<RailWorkerPreflightResult | null>(null);
+  const [checkingRailPreflight, setCheckingRailPreflight] = useState(false);
+  const [probingRailPreflight, setProbingRailPreflight] = useState(false);
 
   const railOptionsForReceipt = (receipt: PrivatePaymentReceipt) => ({
     evmChainId: runtime.evmChainId,
@@ -279,6 +357,43 @@ const PaperWallet: React.FC = () => {
     setProofLayer(railPlan.recommendedProofLayer);
     setDurableReceipt(railPlan.requireDurableReceipt);
     setStatus(`Applied Dark Clawd plan: ${railPlan.summary}`);
+  };
+
+  const handleCheckRailPreflight = async (probe = false) => {
+    if (!runtime.railWorkerUrl) {
+      setStatus('Set RAIL_WORKER_URL or VITE_RAIL_WORKER_URL to run rail preflight');
+      return;
+    }
+
+    if (probe) {
+      setProbingRailPreflight(true);
+    } else {
+      setCheckingRailPreflight(true);
+    }
+
+    setStatus(probe ? 'Probing configured rail backends...' : 'Checking rail worker preflight...');
+    try {
+      const result = await getRailWorkerPreflight(runtime.railWorkerUrl, { probe });
+      setRailPreflight(result);
+      if (!result.ok) {
+        setStatus(result.error || result.errors?.join('; ') || `Rail preflight returned HTTP ${result.status}`);
+        return;
+      }
+
+      setStatus(
+        `Rail preflight ${result.mode ?? 'unknown'}: ${
+          result.ready ? 'ready for configured live rails' : 'not ready for live settlement'
+        }`,
+      );
+    } catch (error: any) {
+      setStatus(`Rail preflight error: ${error.message}`);
+    } finally {
+      if (probe) {
+        setProbingRailPreflight(false);
+      } else {
+        setCheckingRailPreflight(false);
+      }
+    }
   };
 
   const handleGenerate = async () => {
@@ -752,6 +867,20 @@ const PaperWallet: React.FC = () => {
           <button className="btn-secondary" onClick={handleApplyRailPlan} disabled={!railPlan}>
             Apply Plan
           </button>
+          <button
+            className="btn-secondary"
+            onClick={() => void handleCheckRailPreflight(false)}
+            disabled={!runtime.railWorkerUrl || checkingRailPreflight || probingRailPreflight}
+          >
+            {checkingRailPreflight ? 'Checking...' : 'Rail Preflight'}
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() => void handleCheckRailPreflight(true)}
+            disabled={!runtime.railWorkerUrl || checkingRailPreflight || probingRailPreflight}
+          >
+            {probingRailPreflight ? 'Probing...' : 'Probe Backends'}
+          </button>
           <button className="btn-primary" onClick={handleStagePayment}>
             Stage Private Payment
           </button>
@@ -761,6 +890,9 @@ const PaperWallet: React.FC = () => {
           amount, rail, settlement, proof layer, config flags, and anchor status. It never sends secret-key JSON.
           When RAIL_WORKER_URL is configured, the worker performs the xAI review server-side so XAI_API_KEY stays off the browser.
         </p>
+        {railPreflight && (
+          <RailPreflightPanel preflight={railPreflight} />
+        )}
         {railPlanResponse && (
           <div className="mini-panel mt-4 whitespace-pre-wrap text-sm text-gray-300">
             {railPlanResponse}

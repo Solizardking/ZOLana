@@ -4,6 +4,7 @@ import {
   type PrivatePaymentEvmVerifierPlan,
   type PrivatePaymentProofOptions,
   type PrivatePaymentProofPayload,
+  type PrivatePaymentRail,
   type PrivatePaymentReceipt,
 } from './private-payment';
 import {
@@ -111,6 +112,67 @@ export interface RailWorkerAgentPlanResult {
   error?: string;
   errors?: string[];
   workerUrl: string;
+}
+
+export interface RailWorkerPreflightRail {
+  rail: string;
+  configured: boolean;
+  status: string;
+  endpoint?: string;
+  endpointDigest?: string;
+  authConfigured?: boolean;
+  probe?: string;
+  responseStatus?: number;
+  reason?: string;
+  error?: string;
+}
+
+export interface RailWorkerPreflightResult {
+  ok: boolean;
+  status: number;
+  service?: string;
+  generatedAt?: string;
+  mode?: 'blocked' | 'intent-only' | 'partial-live' | 'live-ready' | string;
+  ready?: boolean;
+  liveSettlementReady?: boolean;
+  allRailsConfigured?: boolean;
+  blockers?: string[];
+  warnings?: string[];
+  solana?: {
+    cluster?: string;
+    verificationEnabled?: boolean;
+    verificationRequired?: boolean;
+    commitment?: string;
+    rpcConfigured?: boolean;
+    rpcEndpoint?: string;
+    rpcEndpointDigest?: string;
+    status?: string;
+  };
+  evm?: {
+    chainId?: number;
+    verifierConfigured?: boolean;
+    verifier?: string;
+    status?: string;
+  };
+  xai?: {
+    configured?: boolean;
+    model?: string;
+    baseUrl?: string;
+    status?: string;
+  };
+  replayLedger?: {
+    durable?: boolean;
+    status?: string;
+  };
+  rails?: Partial<Record<PrivatePaymentRail, RailWorkerPreflightRail>>;
+  error?: string;
+  errors?: string[];
+  workerUrl: string;
+}
+
+export interface RailWorkerPreflightOptions {
+  probe?: boolean;
+  fetchImpl?: typeof fetch;
 }
 
 function normalizeWorkerUrl(workerUrl: string): string {
@@ -229,6 +291,24 @@ export async function planRailWithWorker(
     },
     body: JSON.stringify({ context: publicContext }),
   });
+  const payload = await readJsonResponse(response);
+
+  return {
+    ...payload,
+    ok: Boolean(payload.ok) && response.ok,
+    status: response.status,
+    workerUrl,
+  };
+}
+
+export async function getRailWorkerPreflight(
+  workerUrlValue: string,
+  options: RailWorkerPreflightOptions = {},
+): Promise<RailWorkerPreflightResult> {
+  const workerUrl = normalizeWorkerUrl(workerUrlValue);
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const query = options.probe ? '?probe=1' : '';
+  const response = await fetchImpl(`${workerUrl}/rail/preflight${query}`);
   const payload = await readJsonResponse(response);
 
   return {

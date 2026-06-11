@@ -102,6 +102,14 @@ submit an anchored receipt directly to the worker and refresh the worker ledger
 status without manually exporting JSON. The wallet stores the returned rail
 authorization ID and sanitized settlement status with the local receipt.
 
+The same tab can run `Rail Preflight` and `Probe Backends` against the worker's
+`/rail/preflight` endpoint. This displays sanitized readiness for Helius/Solana
+RPC verification, server-side Dark Clawd/xAI, EVM verifier configuration,
+durable replay ledger mode, and x402/AP2/M2M backend status before operators
+submit a receipt. Probe mode only asks the worker to issue backend `HEAD`
+checks; it does not send recipients, amounts, proof payloads, private keys,
+signatures, API keys, or backend bearer tokens to the browser response.
+
 When the worker returns `evmVerifierPlan`, the wallet also stores and displays
 the sanitized EVM verifier handoff on that receipt: verifier address, chain ID,
 intent digest, verified Solana slot, plan digest, readiness state, problems,
