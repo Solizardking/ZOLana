@@ -1,5 +1,8 @@
 # DarkSwap Component
 
+This directory is archived reference code. It is not part of the supported
+public release surface and is not maintained as a standalone package.
+
 Privacy-enhanced Jupiter Swap interface with Dark Protocol integration.
 
 ## Overview

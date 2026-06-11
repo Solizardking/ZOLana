@@ -132,6 +132,9 @@ Program re-exploration and port mapping:
 
 Relevant env:
 
+Keep real values in a local untracked env file only. Do not commit live keys,
+RPC tokens, or private-key material.
+
 ```bash
 HELIUS_RPC_URL=
 HELIUS_API_KEY=

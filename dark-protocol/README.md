@@ -120,7 +120,8 @@ npm run build
 
 ### Environment Setup
 
-Create a `.env` file:
+Create a local `.env` file and keep it untracked. Never commit real API keys,
+RPC tokens, or private keys.
 
 ```bash
 HELIUS_API_KEY=your_helius_api_key

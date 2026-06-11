@@ -31,7 +31,7 @@
 | 🔄 **Swaps** | Jupiter DEX aggregation — best routes across all Solana DEXs |
 | 🏗️ **Infrastructure** | Helius RPC, webhooks, DAS API |
 | 🤖 **AI Agents** | Intel SGX/AMD SEV Trusted Execution Environments |
-| 👛 **Wallets** | Backpack, Phantom, Solflare, and the custom Dark Wallet |
+| 👛 **Wallets** | Backpack, Phantom, and the custom Dark Wallet |
 
 ---
 
@@ -64,7 +64,7 @@
 | `dark-protocol/` | 🎯 **Core — Solana Anchor programs + TS SDK** | 27 Rust files | `privacy` `solana` `anchor` |
 | `src/` | 🏛️ **Zcash full-node (zcashd) C++ daemon** | ~180 source files | `zcash` `c++` `consensus` |
 | `dark-wallet/` | 🎨 **Browser-based privacy wallet** | Vite + React + Tailwind | `wallet` `ui` `shielded` |
-| `darkswap/` | 🔄 **Jupiter DEX integration examples** | 3 sub-projects | `jupiter` `swaps` `defi` |
+| `darkswap/` | 🔄 **Jupiter DEX integration reference examples** | 3 sub-projects | `jupiter` `swaps` `reference` |
 | `backpack-master/` | 👛 **Backpack wallet monorepo** | Coral's Solana wallet | `wallet` `xNFT` `coral` |
 | `helius-sdk-main/` | 🏗️ **Helius Solana SDK** | RPC + Webhooks | `infrastructure` `rpc` |
 | `jupiter-amm-impl/` | 🔧 **Jupiter AMM Rust SDK** | 6 crate workspace | `amm` `routing` |
@@ -156,16 +156,16 @@ Builds clean! ✅ → 725KB gzip output
 | ✉️ Private transfer | ✅ Component ready |
 | 🔄 Private swap | ✅ Component ready |
 | 🤖 AI Agent manager | ✅ Component ready |
-| 👛 Wallet adapter | ✅ Backpack, Phantom, Solflare |
+| 👛 Wallet adapter | ✅ Backpack, Phantom |
 
 ### 4. 🔄 DEX Integration (`darkswap/`)
 > Jupiter: the DeFi routing layer
 
 ```
 darkswap/
-├── jupiter-core-example-main/        🦀 Rust AMM core
-├── jupiter-quote-api-node-main/      📡 Node.js quote API
-└── jupiter-swap-api-client-main/     💱 Swap execution client
+├── jupiter-core-example-main/        🦀 Rust AMM core example
+├── jupiter-quote-api-node-main/      📡 Node.js quote API example
+└── jupiter-swap-api-client-main/     💱 Swap execution example
 ```
 
 ### 5. 🏗️ Infrastructure (`helius-sdk-main/`)
@@ -309,7 +309,6 @@ await client.privateTransfer({
 ```
 ✅ Backpack     — Full Solana xNFT wallet
 ✅ Phantom      — Most popular Solana wallet
-✅ Solflare     — Multi-chain Solana wallet
 ✅ Wallet Adapter Standard — Any Solana wallet
 ```
 

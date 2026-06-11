@@ -253,7 +253,7 @@ test('rail preflight reports intent-only when live settlement backends are missi
     env: {
       RAIL_WORKER_VERIFY_SOLANA_ANCHOR: '1',
       RAIL_WORKER_REQUIRE_SOLANA_VERIFICATION: '1',
-      HELIUS_API_KEY: 'helius-secret',
+      HELIUS_API_KEY: 'test-helius-key',
       SOLANA_CLUSTER: 'devnet',
       EVM_PRIVATE_PAYMENT_VERIFIER: '0x0000000000000000000000000000000000000402',
     },
@@ -270,7 +270,7 @@ test('rail preflight reports intent-only when live settlement backends are missi
   assert.equal(result.evm.status, 'ready');
   assert.equal(result.rails.x402.status, 'missing');
   assert.match(result.warnings.join('\n'), /intent-only/);
-  assert.doesNotMatch(JSON.stringify(result), /helius-secret/);
+  assert.doesNotMatch(JSON.stringify(result), /test-helius-key/);
 });
 
 test('rail preflight probes configured backends without leaking secrets', async () => {
@@ -280,14 +280,14 @@ test('rail preflight probes configured backends without leaking secrets', async 
       RAIL_WORKER_STORE_PATH: '/tmp/not-used-in-test.json',
       RAIL_WORKER_VERIFY_SOLANA_ANCHOR: '1',
       RAIL_WORKER_REQUIRE_SOLANA_VERIFICATION: '1',
-      HELIUS_RPC_URL: 'https://devnet.helius-rpc.com/?api-key=helius-secret',
+      HELIUS_RPC_URL: 'https://devnet.helius-rpc.com/?api-key=test-helius-key',
       SOLANA_CLUSTER: 'mainnet-beta',
       EVM_CHAIN_ID: '8453',
       EVM_PRIVATE_PAYMENT_VERIFIER: '0x0000000000000000000000000000000000000402',
-      XAI_API_KEY: 'xai-secret',
+      XAI_API_KEY: 'test-xai-key',
       XAI_MODEL: 'grok-test',
-      RAIL_WORKER_BACKEND_TOKEN: 'rail-secret',
-      X402_FACILITATOR_URL: 'https://x402.example/authorize?token=secret',
+      RAIL_WORKER_BACKEND_TOKEN: 'test-rail-token',
+      X402_FACILITATOR_URL: 'https://x402.example/authorize?token=test-x402-token',
       AP2_MANDATE_RUNNER_URL: 'https://ap2.example/mandates/run',
       M2M_SETTLEMENT_URL: 'https://m2m.example/sessions/settle',
     },
@@ -315,8 +315,8 @@ test('rail preflight probes configured backends without leaking secrets', async 
   assert.equal(result.rails.ap2.responseStatus, 204);
   assert.equal(calls.length, 3);
   assert.deepEqual(calls.map(call => call.init.method), ['HEAD', 'HEAD', 'HEAD']);
-  assert.ok(calls.every(call => call.init.headers.authorization === 'Bearer rail-secret'));
-  assert.doesNotMatch(JSON.stringify(result), /helius-secret|xai-secret|rail-secret|token=secret/);
+  assert.ok(calls.every(call => call.init.headers.authorization === 'Bearer test-rail-token'));
+  assert.doesNotMatch(JSON.stringify(result), /test-helius-key|test-xai-key|test-rail-token|token=test-x402-token/);
   assert.match(result.rails.x402.endpointDigest, /^0x[a-f0-9]{64}$/);
 });
 
@@ -460,7 +460,7 @@ test('configured settlement backend is called and normalized', async () => {
   const result = await processRailRequest(fixture('ap2'), createWorkerState(), {
     now: 1760000002000,
     backendUrls: { ap2: 'https://settlement.example/ap2' },
-    backendToken: 'rail-secret',
+    backendToken: 'test-rail-token',
     fetch: async (url, init) => {
       calls.push({ url, init });
       return {
@@ -489,7 +489,7 @@ test('configured settlement backend is called and normalized', async () => {
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'https://settlement.example/ap2');
   assert.equal(calls[0].init.method, 'POST');
-  assert.equal(calls[0].init.headers.authorization, 'Bearer rail-secret');
+  assert.equal(calls[0].init.headers.authorization, 'Bearer test-rail-token');
 
   const sent = JSON.parse(calls[0].init.body);
   assert.equal(sent.rail, 'ap2');
@@ -649,10 +649,10 @@ test('Dark Clawd rail planner calls xAI with public-only fingerprinted prompt', 
     },
   }, {
     env: {
-      XAI_API_KEY: 'xai-secret',
+      XAI_API_KEY: 'test-xai-key',
       XAI_BASE_URL: 'https://api.x.ai/v1/',
       XAI_MODEL: 'grok-test',
-      HELIUS_API_KEY: 'helius-secret',
+      HELIUS_API_KEY: 'test-helius-key',
       EVM_PRIVATE_PAYMENT_VERIFIER: '0x0000000000000000000000000000000000000402',
     },
     fetch: async (url, init) => {
@@ -679,14 +679,14 @@ test('Dark Clawd rail planner calls xAI with public-only fingerprinted prompt', 
   assert.equal(result.plan.recommendedProofLayer, 'evm');
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'https://api.x.ai/v1/chat/completions');
-  assert.equal(calls[0].init.headers.authorization, 'Bearer xai-secret');
+  assert.equal(calls[0].init.headers.authorization, 'Bearer test-xai-key');
 
   const sent = JSON.parse(calls[0].init.body);
   const prompt = sent.messages[0].content;
   assert.match(prompt, /Recipient fingerprint: zsol\.\.\.iver#1234/);
   assert.match(prompt, /Operator note fingerprint: operator-note#/);
   assert.doesNotMatch(prompt, /do not leak this full operator note/);
-  assert.doesNotMatch(prompt, /secretKeyJson|\[1,2,3\]|seedPhrase|never include me|helius-secret|xai-secret/);
+  assert.doesNotMatch(prompt, /secretKeyJson|\[1,2,3\]|seedPhrase|never include me|test-helius-key|test-xai-key/);
 });
 
 test('rail plan context can be derived from exported proof payload without raw recipient', () => {

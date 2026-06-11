@@ -45,6 +45,9 @@ the Zcash/Sapling paper-wallet workflow into Solana/SVM execution:
 
 ## Runtime Environment
 
+Keep real values in a local untracked env file only. Do not commit live keys,
+RPC tokens, or private-key material.
+
 ```bash
 HELIUS_RPC_URL=
 HELIUS_API_KEY=
