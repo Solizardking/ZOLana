@@ -23,6 +23,13 @@ The server listens on `127.0.0.1:4020` by default.
 RAIL_WORKER_PORT=4020
 RAIL_WORKER_STORE_PATH=.zolana/rail-ledger.json
 RAIL_WORKER_CORS_ORIGIN=http://127.0.0.1:5173
+RAIL_WORKER_VERIFY_SOLANA_ANCHOR=1
+RAIL_WORKER_REQUIRE_SOLANA_VERIFICATION=1
+RAIL_WORKER_SOLANA_COMMITMENT=confirmed
+HELIUS_RPC_URL=https://devnet.helius-rpc.com/?api-key=...
+HELIUS_API_KEY=...
+SOLANA_RPC_URL=https://api.devnet.solana.com
+SOLANA_CLUSTER=devnet
 RAIL_WORKER_BACKEND_TOKEN=optional-shared-secret
 X402_FACILITATOR_URL=https://facilitator.example/authorize
 AP2_MANDATE_RUNNER_URL=https://ap2.example/mandates/run
@@ -44,6 +51,12 @@ amounts.
 `RAIL_WORKER_CORS_ORIGIN` defaults to `*`. Set it to the Dark Wallet dev or
 production origin when the browser wallet should submit rail authorizations
 directly.
+
+`RAIL_WORKER_VERIFY_SOLANA_ANCHOR=1` makes the worker fetch the anchored Solana
+transaction and verify the Memo payload before settlement handoff. Use
+`RAIL_WORKER_REQUIRE_SOLANA_VERIFICATION=1` in production to reject requests
+when RPC verification is unavailable or mismatched. RPC resolution order is:
+`HELIUS_RPC_URL`, `SOLANA_RPC_URL`, then `HELIUS_API_KEY` plus `SOLANA_CLUSTER`.
 
 ```bash
 curl -X POST http://127.0.0.1:4020/rail/authorize \
@@ -74,6 +87,8 @@ curl http://127.0.0.1:4020/rail/settlements/rail_x402_...
 - rail kind matches `x402-http-402`, `ap2-mandate`, or `m2m-session`
 - receipt ID, amount, recipient, commitment, Solana signature, cluster, EVM
   digest, chain ID, and verifier contract match
+- optional or required Solana RPC verification proves the anchored Memo
+  transaction contains a matching `zolana.dark` private-payment intent
 - EVM intent proof digest recomputes from the EIP-712-style payload
 - authorization ID recomputes from the rail envelope
 - replay key recomputes from receipt ID, nonce, Solana signature, EVM digest,

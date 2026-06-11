@@ -83,6 +83,9 @@ How the last-November Zcash-to-Solana port works:
 8. Dark Wallet can submit an anchored receipt directly to the rail worker when
    `RAIL_WORKER_URL` or `VITE_RAIL_WORKER_URL` is configured, then refresh the
    worker ledger status from the paper-wallet receipt row.
+9. The rail worker can independently verify the Solana Memo anchor through
+   Helius or another Solana RPC before consuming replay keys or forwarding to a
+   settlement backend.
 
 Program re-exploration and port mapping:
 
@@ -111,6 +114,9 @@ RAIL_WORKER_BACKEND_TOKEN=
 RAIL_WORKER_STORE_PATH=.zolana/rail-ledger.json
 RAIL_WORKER_URL=http://127.0.0.1:4020
 RAIL_WORKER_CORS_ORIGIN=http://127.0.0.1:5173
+RAIL_WORKER_VERIFY_SOLANA_ANCHOR=1
+RAIL_WORKER_REQUIRE_SOLANA_VERIFICATION=1
+RAIL_WORKER_SOLANA_COMMITMENT=confirmed
 X402_FACILITATOR_URL=
 AP2_MANDATE_RUNNER_URL=
 M2M_SETTLEMENT_URL=

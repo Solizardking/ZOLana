@@ -169,6 +169,57 @@ function fixture(rail = 'x402') {
   return { proofPayload, railAuthorization: base };
 }
 
+function privatePaymentMemo(request) {
+  const proof = request.proofPayload;
+  return {
+    protocol: 'zolana.dark',
+    version: 1,
+    action: 'private_payment',
+    payer: proof.solanaAnchor.payer,
+    recipient: proof.recipient,
+    amountLamports: proof.amountLamports,
+    commitment: proof.commitmentHex,
+    createdAt: proof.createdAt,
+    memoHash: proof.memoHash,
+    rail: proof.rail,
+    settlement: proof.settlement,
+    proofLayer: proof.proofLayer,
+    durableReceipt: proof.durableReceipt,
+    receiptId: proof.receiptId,
+  };
+}
+
+function rpcTransaction(request, overrides = {}) {
+  return {
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        jsonrpc: '2.0',
+        id: 'zolana-rail-worker',
+        result: {
+          slot: overrides.slot ?? request.proofPayload.solanaVerification.slot,
+          blockTime: 1760000000,
+          meta: { err: null },
+          transaction: {
+            message: {
+              instructions: [
+                {
+                  programId: 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',
+                  parsed: JSON.stringify({
+                    ...privatePaymentMemo(request),
+                    ...(overrides.memo ?? {}),
+                  }),
+                },
+              ],
+            },
+          },
+        },
+      };
+    },
+  };
+}
+
 test('valid x402 rail authorization is accepted and consumes replay key', async () => {
   const state = createWorkerState();
   const first = await processRailRequest(fixture('x402'), state, { now: 1760000002000 });
@@ -180,6 +231,92 @@ test('valid x402 rail authorization is accepted and consumes replay key', async 
   const replay = await processRailRequest(fixture('x402'), state, { now: 1760000003000 });
   assert.equal(replay.ok, false);
   assert.equal(replay.status, 409);
+});
+
+test('required Solana RPC Memo verification accepts matching private-payment anchor', async () => {
+  const request = fixture('x402');
+  const calls = [];
+  const result = await processRailRequest(request, createWorkerState(), {
+    now: 1760000002000,
+    solanaVerificationConfig: {
+      enabled: true,
+      required: true,
+      rpcUrl: 'https://solana-rpc.example',
+      commitment: 'confirmed',
+    },
+    solanaFetch: async (url, init) => {
+      calls.push({ url, init });
+      return rpcTransaction(request);
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 202);
+  assert.equal(result.solanaVerification.skipped, false);
+  assert.equal(result.solanaVerification.slot, 12345);
+  assert.equal(result.solanaVerification.payer, 'payer111');
+  assert.equal(result.ledger.recorded, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://solana-rpc.example');
+
+  const rpcBody = JSON.parse(calls[0].init.body);
+  assert.equal(rpcBody.method, 'getTransaction');
+  assert.equal(rpcBody.params[0], '5SolanaSignature');
+  assert.equal(rpcBody.params[1].encoding, 'jsonParsed');
+});
+
+test('Solana RPC Memo mismatch is rejected before replay key is consumed', async () => {
+  const request = fixture('ap2');
+  const state = createWorkerState();
+  const solanaVerificationConfig = {
+    enabled: true,
+    required: true,
+    rpcUrl: 'https://solana-rpc.example',
+    commitment: 'confirmed',
+  };
+
+  const rejected = await processRailRequest(request, state, {
+    now: 1760000002000,
+    solanaVerificationConfig,
+    solanaFetch: async () => rpcTransaction(request, { memo: { amountLamports: '1' } }),
+  });
+
+  assert.equal(rejected.ok, false);
+  assert.equal(rejected.status, 400);
+  assert.match(rejected.errors.join('\n'), /Solana Memo intent mismatch/);
+
+  const accepted = await processRailRequest(request, state, {
+    now: 1760000003000,
+    solanaVerificationConfig,
+    solanaFetch: async () => rpcTransaction(request),
+  });
+
+  assert.equal(accepted.ok, true);
+  assert.equal(accepted.status, 200);
+
+  const replay = await processRailRequest(request, state, {
+    now: 1760000004000,
+    solanaVerificationConfig,
+    solanaFetch: async () => rpcTransaction(request),
+  });
+  assert.equal(replay.ok, false);
+  assert.equal(replay.status, 409);
+});
+
+test('required Solana verification without RPC config is rejected', async () => {
+  const result = await processRailRequest(fixture('m2m'), createWorkerState(), {
+    now: 1760000002000,
+    solanaVerificationConfig: {
+      enabled: false,
+      required: true,
+      rpcUrl: '',
+      commitment: 'confirmed',
+    },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 503);
+  assert.match(result.errors.join('\n'), /no RPC URL/);
 });
 
 test('file-backed rail store persists replay and sanitized settlement ledger across restarts', async t => {

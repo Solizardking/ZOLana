@@ -48,6 +48,9 @@ RAIL_WORKER_BACKEND_TOKEN=
 RAIL_WORKER_STORE_PATH=.zolana/rail-ledger.json
 RAIL_WORKER_URL=http://127.0.0.1:4020
 RAIL_WORKER_CORS_ORIGIN=http://127.0.0.1:5173
+RAIL_WORKER_VERIFY_SOLANA_ANCHOR=1
+RAIL_WORKER_REQUIRE_SOLANA_VERIFICATION=1
+RAIL_WORKER_SOLANA_COMMITMENT=confirmed
 X402_FACILITATOR_URL=
 AP2_MANDATE_RUNNER_URL=
 M2M_SETTLEMENT_URL=
@@ -57,8 +60,9 @@ M2M_SETTLEMENT_URL=
 
 The current implementation is production-shaped but honest about settlement.
 Solana Memo anchors, durable receipts, rail authorization exports, direct wallet
-submission to the rail worker, EVM verifier tests, durable rail-worker
-replay/settlement state, and backend adapter hooks exist. A live x402
+submission to the rail worker, independent worker-side Solana Memo verification,
+EVM verifier tests, durable rail-worker replay/settlement state, and backend
+adapter hooks exist. A live x402
 facilitator, AP2 mandate runner, or M2M settlement backend must be supplied
 through the env vars above before the system should claim final payment
 settlement.

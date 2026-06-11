@@ -8,6 +8,8 @@ const KIND_BY_RAIL = {
   ap2: 'ap2-mandate',
   m2m: 'm2m-session',
 };
+const MEMO_PROGRAM_ID = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
 export class ReplayStore {
   durable = false;
@@ -177,6 +179,30 @@ export function createSettlementConfig(env = process.env) {
   };
 }
 
+function truthyEnv(value) {
+  return ['1', 'true', 'yes', 'on'].includes(String(value ?? '').toLowerCase());
+}
+
+function resolveSolanaRpcUrl(env = process.env) {
+  const direct = env.HELIUS_RPC_URL || env.SOLANA_RPC_URL || '';
+  if (direct) return direct;
+
+  const apiKey = env.HELIUS_API_KEY || '';
+  if (!apiKey) return '';
+
+  const cluster = env.SOLANA_CLUSTER === 'mainnet-beta' ? 'mainnet' : 'devnet';
+  return `https://${cluster}.helius-rpc.com/?api-key=${apiKey}`;
+}
+
+export function createSolanaVerificationConfig(env = process.env) {
+  return {
+    enabled: truthyEnv(env.RAIL_WORKER_VERIFY_SOLANA_ANCHOR),
+    required: truthyEnv(env.RAIL_WORKER_REQUIRE_SOLANA_VERIFICATION),
+    rpcUrl: resolveSolanaRpcUrl(env),
+    commitment: env.RAIL_WORKER_SOLANA_COMMITMENT || 'confirmed',
+  };
+}
+
 export function stableDigest(value) {
   return `0x${createHash('sha256').update(value).digest('hex')}`;
 }
@@ -275,6 +301,272 @@ function validateEvmIntentProof(proof) {
   }
 
   return errors;
+}
+
+function decodeBase58(value) {
+  const bytes = [0];
+  for (const char of value) {
+    const digit = BASE58_ALPHABET.indexOf(char);
+    if (digit < 0) {
+      throw new Error('invalid base58 character');
+    }
+
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] *= 58;
+    }
+    bytes[0] += digit;
+
+    let carry = 0;
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] += carry;
+      carry = bytes[index] >> 8;
+      bytes[index] &= 0xff;
+    }
+
+    while (carry > 0) {
+      bytes.push(carry & 0xff);
+      carry >>= 8;
+    }
+  }
+
+  for (const char of value) {
+    if (char !== '1') break;
+    bytes.push(0);
+  }
+
+  return Uint8Array.from(bytes.reverse());
+}
+
+function instructionProgramId(instruction) {
+  return instruction?.programId?.toBase58?.()
+    ?? instruction?.programId?.toString?.()
+    ?? instruction?.programId
+    ?? instruction?.program;
+}
+
+function memoTextFromInstruction(instruction) {
+  const programId = instructionProgramId(instruction);
+  if (programId !== MEMO_PROGRAM_ID && instruction?.program !== 'spl-memo') {
+    return null;
+  }
+
+  if (typeof instruction.parsed === 'string') {
+    return instruction.parsed;
+  }
+
+  if (typeof instruction.parsed?.memo === 'string') {
+    return instruction.parsed.memo;
+  }
+
+  if (typeof instruction.parsed?.info?.memo === 'string') {
+    return instruction.parsed.info.memo;
+  }
+
+  if (Array.isArray(instruction.data) && typeof instruction.data[0] === 'string') {
+    const [data, encoding] = instruction.data;
+    if (encoding === 'base64') return Buffer.from(data, 'base64').toString('utf8');
+    if (encoding === 'base58') return Buffer.from(decodeBase58(data)).toString('utf8');
+  }
+
+  if (typeof instruction.data === 'string') {
+    try {
+      return Buffer.from(decodeBase58(instruction.data)).toString('utf8');
+    } catch {
+      try {
+        return Buffer.from(instruction.data, 'base64').toString('utf8');
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  return null;
+}
+
+function parseDarkMemoPayload(memo) {
+  try {
+    const parsed = JSON.parse(memo);
+    if (
+      parsed
+      && parsed.protocol === 'zolana.dark'
+      && parsed.version === 1
+      && parsed.action === 'private_payment'
+    ) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function compareSolanaMemoPayload(payload, proof) {
+  const expectedMemoHash = proof.memoHash ?? proof.evmIntentProof?.eip712?.message?.memoHash;
+  const checks = [
+    ['protocol', payload.protocol, 'zolana.dark'],
+    ['version', payload.version, 1],
+    ['action', payload.action, 'private_payment'],
+    ['receiptId', payload.receiptId, proof.receiptId],
+    ['recipient', payload.recipient, proof.recipient],
+    ['amountLamports', payload.amountLamports, proof.amountLamports],
+    ['commitment', payload.commitment, proof.commitmentHex],
+    ['rail', payload.rail, proof.rail],
+    ['settlement', payload.settlement, proof.settlement],
+    ['proofLayer', payload.proofLayer, proof.proofLayer],
+    ['durableReceipt', payload.durableReceipt, proof.durableReceipt],
+    ['createdAt', payload.createdAt, proof.createdAt],
+  ];
+
+  if (proof.solanaAnchor?.payer) {
+    checks.push(['payer', payload.payer, proof.solanaAnchor.payer]);
+  }
+
+  if (expectedMemoHash && expectedMemoHash !== '0x') {
+    checks.push(['memoHash', payload.memoHash, expectedMemoHash]);
+  }
+
+  return checks
+    .filter(([, actual, expected]) => actual !== expected)
+    .map(([field, actual, expected]) => `${field}: expected ${String(expected)}, got ${String(actual)}`);
+}
+
+function transactionInstructions(transaction) {
+  const message = transaction?.transaction?.message;
+  const topLevel = Array.isArray(message?.instructions) ? message.instructions : [];
+  const inner = Array.isArray(transaction?.meta?.innerInstructions)
+    ? transaction.meta.innerInstructions.flatMap(group => Array.isArray(group.instructions) ? group.instructions : [])
+    : [];
+  return [...topLevel, ...inner];
+}
+
+export async function verifySolanaMemoAnchor(proof, auth, config, fetchImpl = globalThis.fetch) {
+  const shouldVerify = config.required || config.enabled;
+  if (!shouldVerify) {
+    return { ok: true, skipped: true, reason: 'Solana RPC verification is disabled' };
+  }
+
+  const signature = auth.solanaAnchorSignature ?? proof.solanaAnchor?.signature;
+  if (!signature) {
+    return {
+      ok: false,
+      status: 400,
+      errors: ['Solana anchor signature is required for RPC verification'],
+    };
+  }
+
+  if (!config.rpcUrl) {
+    return {
+      ok: !config.required,
+      skipped: !config.required,
+      status: config.required ? 503 : undefined,
+      errors: config.required ? ['Solana RPC verification is required but no RPC URL is configured'] : undefined,
+      reason: 'No Solana RPC URL configured',
+    };
+  }
+
+  if (typeof fetchImpl !== 'function') {
+    return {
+      ok: false,
+      status: 503,
+      errors: ['Solana RPC verification requires fetch support'],
+    };
+  }
+
+  let response;
+  try {
+    response = await fetchImpl(config.rpcUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'zolana-rail-worker',
+        method: 'getTransaction',
+        params: [
+          signature,
+          {
+            encoding: 'jsonParsed',
+            commitment: config.commitment,
+            maxSupportedTransactionVersion: 0,
+          },
+        ],
+      }),
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      status: 503,
+      errors: [`Solana RPC request failed: ${error.message}`],
+    };
+  }
+
+  let rpcPayload;
+  try {
+    rpcPayload = await response.json();
+  } catch {
+    return {
+      ok: false,
+      status: 503,
+      errors: ['Solana RPC returned a non-JSON response'],
+    };
+  }
+
+  if (!response.ok || rpcPayload.error) {
+    return {
+      ok: false,
+      status: 503,
+      errors: [rpcPayload.error?.message ?? `Solana RPC returned HTTP ${response.status}`],
+    };
+  }
+
+  const transaction = rpcPayload.result;
+  if (!transaction) {
+    return {
+      ok: false,
+      status: 400,
+      errors: [`Solana transaction not found: ${signature}`],
+    };
+  }
+
+  if (transaction.meta?.err) {
+    return {
+      ok: false,
+      status: 400,
+      errors: [`Solana transaction failed: ${JSON.stringify(transaction.meta.err)}`],
+    };
+  }
+
+  for (const instruction of transactionInstructions(transaction)) {
+    const memo = memoTextFromInstruction(instruction);
+    if (!memo) continue;
+
+    const payload = parseDarkMemoPayload(memo);
+    if (!payload) continue;
+
+    const mismatches = compareSolanaMemoPayload(payload, proof);
+    if (auth.solanaVerifiedSlot && auth.solanaVerifiedSlot !== transaction.slot) {
+      mismatches.push(`solanaVerifiedSlot: expected ${String(transaction.slot)}, got ${String(auth.solanaVerifiedSlot)}`);
+    }
+
+    return {
+      ok: mismatches.length === 0,
+      status: mismatches.length === 0 ? 200 : 400,
+      skipped: false,
+      signature,
+      slot: transaction.slot,
+      blockTime: transaction.blockTime,
+      payer: payload.payer,
+      memoMatched: mismatches.length === 0,
+      mismatches,
+      errors: mismatches.length ? [`Solana Memo intent mismatch: ${mismatches.join('; ')}`] : undefined,
+    };
+  }
+
+  return {
+    ok: false,
+    status: 400,
+    errors: ['No matching ZOLana private-payment Memo intent found in Solana transaction'],
+  };
 }
 
 export function validateRailRequest(body, options = {}) {
@@ -461,6 +753,7 @@ export async function callSettlementBackend(auth, proof, config, fetchImpl = glo
           solanaAnchorSignature: auth.solanaAnchorSignature,
           solanaCluster: auth.solanaCluster,
           solanaVerifiedSlot: auth.solanaVerifiedSlot,
+          solanaRpcVerification: config.solanaVerification,
           evmIntentDigest: auth.evmIntentDigest,
           evmChainId: auth.evmChainId,
           evmVerifyingContract: auth.evmVerifyingContract,
@@ -525,6 +818,9 @@ function settlementLedgerEntry(auth, result, now) {
     transactionId: settlement.transactionId,
     backendUrl: settlement.backendUrl,
     evidenceDigest,
+    solanaRpcVerified: Boolean(result.solanaVerification && !result.solanaVerification.skipped),
+    solanaRpcVerifiedSlot: result.solanaVerification?.slot,
+    solanaRpcVerifiedPayer: result.solanaVerification?.payer,
     solanaAnchorSignature: auth.solanaAnchorSignature,
     solanaCluster: auth.solanaCluster,
     solanaVerifiedSlot: auth.solanaVerifiedSlot,
@@ -578,6 +874,27 @@ export async function processRailRequest(body, state = createWorkerState(), opti
     };
   }
 
+  const solanaVerificationConfig = options.solanaVerificationConfig
+    ?? createSolanaVerificationConfig(options.env ?? process.env);
+  const solanaVerification = await verifySolanaMemoAnchor(
+    proof,
+    auth,
+    solanaVerificationConfig,
+    options.solanaFetch ?? options.fetch ?? globalThis.fetch,
+  );
+  if (!solanaVerification.ok) {
+    return {
+      ok: false,
+      status: solanaVerification.status ?? 400,
+      rail: auth.rail,
+      authorizationId: auth.authorizationId,
+      receiptId: auth.receiptId,
+      replayKey: auth.replayKey,
+      errors: solanaVerification.errors ?? ['Solana Memo verification failed'],
+      solanaVerification,
+    };
+  }
+
   const settlementConfig = options.settlementConfig ?? createSettlementConfig(options.env ?? process.env);
   const backendUrls = {
     ...settlementConfig.backendUrls,
@@ -587,7 +904,7 @@ export async function processRailRequest(body, state = createWorkerState(), opti
   const backend = await callSettlementBackend(
     auth,
     proof,
-    { backendUrls, backendToken },
+    { backendUrls, backendToken, solanaVerification },
     options.fetch ?? globalThis.fetch,
   );
 
@@ -610,6 +927,7 @@ export async function processRailRequest(body, state = createWorkerState(), opti
 
   if (backend.skipped) {
     const result = intentOnlyResult(auth, proof);
+    result.solanaVerification = solanaVerification;
     result.ledger = consumeReplayAndRecord(state, auth, result, now);
     return result;
   }
@@ -623,6 +941,7 @@ export async function processRailRequest(body, state = createWorkerState(), opti
     receiptId: auth.receiptId,
     replayKey: auth.replayKey,
     solanaSignature: auth.solanaAnchorSignature,
+    solanaVerification,
     evmIntentDigest: auth.evmIntentDigest,
     settlement: backend.settlement,
     headers: x402Headers(auth, proof),
